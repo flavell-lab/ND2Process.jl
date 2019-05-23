@@ -26,6 +26,7 @@ function write_MHD_str(path, spacing_lat, spacing_axi, size_x, size_y, size_z, f
 end
 
 function write_raw(path, array)
+    @assert eltype(array) == UInt16
     open(path, "w") do f
         write(f, array)
     end
