@@ -14,12 +14,12 @@ end
 function nd2preview(path_nd2; ch=1, return_data=false)
     x_size, y_size, c_size, t_size, z_size = nd2_dim(path_nd2)
 
-    t_list = [0, round(Int, t_size / 2), t_size-1]
+    t_list = [1, round(Int, t_size / 2), t_size]
     stack_ = zeros(UInt16, z_size, x_size, y_size, 3)
     @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
         for (n_, t_) = enumerate(t_list)
             for z_ = 1:z_size
-                stack_[z_,:,:,n_] = transpose(images.get_frame_2D(c=ch-1, t=t_, z=z_-1))
+                stack_[z_,:,:,n_] = transpose(images.get_frame_2D(c=ch-1, t=t_-1, z=z_-1))
             end
         end
     end
@@ -68,7 +68,8 @@ end
 
 function nd2_to_mhd(path_nd2, path_save,
     spacing_lat, spacing_axi, generate_MIP::Bool
-    θ, x_crop, y_crop, z_crop=nothing, chs::Array{Int}=[1],
+    θ, x_crop::UnitRange{Int64}, y_crop::UnitRange{Int64},
+    z_crop::Union{NoUnitRange{Int64}}=nothing, chs::Array{Int}=[1],
     MHD_dir_name="MHD", MIP_dir_name="MIP")
 
     mhd_paths = []
@@ -104,7 +105,7 @@ function nd2_to_mhd(path_nd2, path_save,
             for (n_, z_) = enumerate(z_crop)
                 # load
                 img_ = Float64.(transpose(images.get_frame_2D(c=c_-1, t=t_-1, z=z_-1)))
-                # rotate and crop
+                # rotate, crop, convert to UInt16
                 vol_[:,:,n_] = round.(UInt16, rotate_img(img_, θ)[x_crop, y_crop])
             end
 
