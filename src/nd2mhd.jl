@@ -68,7 +68,7 @@ end
 
 function nd2_to_mhd(path_nd2, path_save,
     spacing_lat, spacing_axi, generate_MIP::Bool,
-    θ, x_crop::UnitRange{Int64}, y_crop::UnitRange{Int64},
+    θ, x_crop::UnitRange{Int64}, y_crop::UnitRange{Int64};
     z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1],
     MHD_dir_name="MHD", MIP_dir_name="MIP")
 
