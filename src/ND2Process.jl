@@ -4,7 +4,6 @@ using ProgressMeter, PyCall, PyPlot, Images, CoordinateTransformations,
     OffsetArrays, MHDIO
 
 include("init.jl")
-include("mhd.jl")
 include("nd2mhd.jl")
 include("utils.jl")
 
