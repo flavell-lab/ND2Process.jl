@@ -67,9 +67,9 @@ function nd2preview(stack::Array; θ, x_crop, y_crop, z_crop=nothing)
 end
 
 function nd2_to_mhd(path_nd2, path_save,
-    spacing_lat, spacing_axi, generate_MIP::Bool
+    spacing_lat, spacing_axi, generate_MIP::Bool,
     θ, x_crop::UnitRange{Int64}, y_crop::UnitRange{Int64},
-    z_crop::Union{NoUnitRange{Int64}}=nothing, chs::Array{Int}=[1],
+    z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1],
     MHD_dir_name="MHD", MIP_dir_name="MIP")
 
     mhd_paths = []
@@ -115,7 +115,7 @@ function nd2_to_mhd(path_nd2, path_save,
 
             # save MHD
             write_raw(path_file_raw, permutedims(vol_, [2,1,3]))
-            write_MHD_str(path_file_MHD, spacing_lat, spacing_axi,
+            write_MHD_spec(path_file_MHD, spacing_lat, spacing_axi,
                     y_size_save, x_size_save, z_size_save, save_basename * ".raw")
 
             # save MIP
