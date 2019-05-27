@@ -26,7 +26,6 @@ function nd2preview(path_nd2; ch=1, return_data=false)
 
     stack_MIP = Float64.(dropdims(maximum(stack_, dims=1), dims=1))
 
-    figure()
     for i = 1:3
         subplot(1,3,i)
         imshow(stack_MIP[:,:,i])
@@ -37,12 +36,19 @@ function nd2preview(path_nd2; ch=1, return_data=false)
     return_data && return stack_
 end
 
-function nd2preview(stack::Array; θ, x_crop, y_crop, z_crop=nothing)
+function nd2preview(stack::Array; θ, x_crop=nothing, y_crop=nothing, z_crop=nothing)
     @assert size(stack, 4) == 3
 
     if z_crop == nothing
         z_crop = 1:size(stack, 1)
     end
+    if y_crop == nothing
+        y_crop = 1:size(stack, 2)
+    end
+    if x_crop == nothing
+        x_crop = 1:size(stack, 3)
+    end
+
 
     stack_MIP = Float64.(dropdims(maximum(stack[z_crop,:,:,:], dims=1), dims=1))
     stack_MIP_proc = zeros(eltype(stack_MIP), length(x_crop), length(y_crop), 3)
@@ -51,7 +57,6 @@ function nd2preview(stack::Array; θ, x_crop, y_crop, z_crop=nothing)
         stack_MIP_proc[:,:,i] = rotate_img(stack_MIP[:,:,i], θ)[x_crop, y_crop]
     end
 
-    figure()
     for i = 1:3
         subplot(1,3,i)
         imshow(stack_MIP_proc[:,:,i])
@@ -68,7 +73,8 @@ end
 
 function nd2_to_mhd(path_nd2, path_save,
     spacing_lat, spacing_axi, generate_MIP::Bool,
-    θ, x_crop::UnitRange{Int64}, y_crop::UnitRange{Int64};
+    θ, x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
+    y_crop::Union{Nothing, UnitRange{Int64}}=nothing;
     z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1],
     MHD_dir_name="MHD", MIP_dir_name="MIP")
 
@@ -85,8 +91,8 @@ function nd2_to_mhd(path_nd2, path_save,
     create_dir(path_dir_MHD)
     generate_MIP && create_dir(path_dir_MIP)
 
-    x_size_save = length(x_crop)
-    y_size_save = length(y_crop)
+    x_size_save = Int(0)
+    y_size_save = Int(0)
     z_size_save = Int(0)
 
     if z_crop == nothing
@@ -95,6 +101,19 @@ function nd2_to_mhd(path_nd2, path_save,
     else
         z_size_save = length(z_crop)
     end
+    if x_crop == nothing
+        x_size_save = x_size
+        x_crop = 1:x_size
+    else
+        x_size_save = length(x_crop)
+    end
+    if y_crop == nothing
+        y_size_save = y_size
+        y_crop = 1:y_size
+    else
+        y_size_save = length(y_crop)
+    end
+
 
     img_ = zeros(UInt16, x_size, y_size)
     vol_ = zeros(UInt16, x_size_save, y_size_save, z_size_save)
