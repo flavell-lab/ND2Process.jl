@@ -4,10 +4,13 @@ using ProgressMeter, PyCall, PyPlot, Images, CoordinateTransformations, OffsetAr
 
 include("init.jl")
 include("nd2mhd.jl")
+include("nd2read.jl")
 include("utils.jl")
 
 export
     nd2_to_mhd,
-    nd2preview
+    nd2preview,
+    nd2dim,
+    nd2read
 
 end # module

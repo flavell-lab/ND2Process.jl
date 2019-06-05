@@ -1,4 +1,4 @@
-function nd2_dim(path_nd2)
+function nd2dim(path_nd2)
     @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
         @assert eltype(images.get_frame_2D(c=0,t=0,z=0)) == UInt16
         x_size, y_size, c_size, t_size, z_size = [images.sizes[k] for k = ["x", "y", "c", "t", "z"]]
@@ -12,7 +12,7 @@ function rotate_img(img, θ)
 end
 
 function nd2preview(path_nd2; ch=1, return_data=false)
-    x_size, y_size, c_size, t_size, z_size = nd2_dim(path_nd2)
+    x_size, y_size, c_size, t_size, z_size = nd2dim(path_nd2)
 
     t_list = [1, round(Int, t_size / 2), t_size]
     stack_ = zeros(UInt16, z_size, x_size, y_size, 3)
@@ -79,7 +79,7 @@ function nd2_to_mhd(path_nd2, path_save,
     MHD_dir_name="MHD", MIP_dir_name="MIP")
 
     mhd_paths = []
-    x_size, y_size, c_size, t_size, z_size = nd2_dim(path_nd2)
+    x_size, y_size, c_size, t_size, z_size = nd2dim(path_nd2)
 
     # directories
     f_basename = splitext(basename(path_nd2))[1]
