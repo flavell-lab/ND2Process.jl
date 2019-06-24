@@ -44,12 +44,14 @@ Returns dim of the file in (x, y, c, t, z)
 Arguments
 ---------
 * `path_nd2`: .nd2 file to read
+* `verbose`: if true, print out the dimensions
 """
-function nd2dim(path_nd2)
+function nd2dim(path_nd2, verbose=false)
     @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
         @assert eltype(images.get_frame_2D(c=0,t=0,z=0)) == UInt16
         x_size, y_size, c_size, t_size, z_size = [images.sizes[k] for k =
             ["x", "y", "c", "t", "z"]]
+        println("$x:x_size, $y:y_size, $c:c_size, t:$t_size, z:$z_size")
         return (x_size, y_size, c_size, t_size, z_size)
     end
 end
@@ -70,15 +72,24 @@ Arguments
 * `ch`: ch to use. Default: 1 (first ch)
 * `return_data`: if true returns the images as array
 """
-function nd2preview(path_nd2; ch=1, return_data=false)
+function nd2preview(path_nd2; ch=1, return_data=false, z_crop=nothing)
     x_size, y_size, c_size, t_size, z_size = nd2dim(path_nd2)
 
     t_list = [1, round(Int, t_size / 2), t_size]
-    stack_ = zeros(UInt16, z_size, x_size, y_size, 3)
+
+    z_size_use = Int(0)
+    if z_crop == nothing
+        z_size_use = z_size
+        z_crop = 1:z_size
+    else
+        z_size_use = length(z_crop)
+    end
+
+    stack_ = zeros(UInt16, z_size_use, x_size, y_size, 3)
     @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
-        for (n_, t_) = enumerate(t_list)
-            for z_ = 1:z_size
-                stack_[z_,:,:,n_] = transpose(images.get_frame_2D(c=ch-1,
+        for (n_t, t_) = enumerate(t_list)
+            for (n_z, z_) = enumerate(z_crop)
+                stack_[n_z,:,:,n_t] = transpose(images.get_frame_2D(c=ch-1,
                     t=t_-1, z=z_-1))
             end
         end
