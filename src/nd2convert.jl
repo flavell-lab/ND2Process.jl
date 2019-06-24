@@ -1,3 +1,27 @@
+"""
+    nd2_to_mhd(path_nd2, path_save,
+        spacing_lat, spacing_axi, generate_MIP::Bool,
+        θ, x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
+        y_crop::Union{Nothing, UnitRange{Int64}}=nothing;
+        z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1],
+        MHD_dir_name="MHD", MIP_dir_name="MIP")
+
+Arguments
+---------
+* `path_nd2`: path of .nd2 file to use
+* `path_save`: path of .h5 file to save
+* `spacing_lat`: lateral spacing (for logging)
+* `spacing_axi`: axial spacing (for logging)
+* `generate_MIP`: if true, save MIP in as preview
+* `θ`: yaw angle (lateral rotation)
+* `x_crop`: x range to use. Full range if nothing.
+* `y_crop`: y range to use. Full range if nothing.
+* `z_crop`: z range to use. Full range if nothing.
+* `chs`: ch to use
+* `MHD_dir_name`: name of the subfolder to save MHD files
+* `MIP_dir_name`: name of the subfolder to save MIP files
+"""
+
 function nd2_to_mhd(path_nd2, path_save,
     spacing_lat, spacing_axi, generate_MIP::Bool,
     θ, x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
@@ -75,9 +99,26 @@ function nd2_to_mhd(path_nd2, path_save,
     end
 end
 
-function nd2_to_h5(path_nd2, path_save,
-    spacing_lat, spacing_axi, generate_MIP::Bool,
-    θ, x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
+"""
+    nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi, θ,
+        x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
+        y_crop::Union{Nothing, UnitRange{Int64}}=nothing;
+        z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1])
+
+Arguments
+---------
+* `path_nd2`: path of .nd2 file to use
+* `path_save`: path of .h5 file to save
+* `spacing_lat`: lateral spacing (for logging)
+* `spacing_axi`: axial spacing (for logging)
+* `θ`: yaw angle (lateral rotation)
+* `x_crop`: x range to use. Full range if nothing.
+* `y_crop`: y range to use. Full range if nothing.
+* `z_crop`: z range to use. Full range if nothing.
+* `chs`: ch to use
+"""
+function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi, θ,
+    x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     y_crop::Union{Nothing, UnitRange{Int64}}=nothing;
     z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1])
 
@@ -132,6 +173,13 @@ function nd2_to_h5(path_nd2, path_save,
                     end # for
                 end # for
             end # for
+
+            dict_attr = Dict("x_crop"=>[x_crop.start, x_crop.stop],
+                "y_crop"=>[y_crop.start, y_crop.stop],
+                "z_crop"=>[z_crop.start, z_crop.stop], "θ"=>θ,
+                "spacing_lat"=>spacing_lat, "spacing_axi"=>spacing_axi)
+
+            h5writeattr(path_h5, "data", dict_attr)
         end # h5open
     end # pywith
 end
