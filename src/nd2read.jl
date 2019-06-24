@@ -1,3 +1,14 @@
+"""
+    nd2read(path_nd2; ch=1, t=1)
+
+Read the image at ch and t
+
+Arguments
+---------
+* `path_nd2`: .nd2 file to read
+* `ch`: ch to read. First ch: 1
+* `t`: time point to read. Can be multiple. First t: 1
+"""
 function nd2read(path_nd2; ch=1, t=1)
     x_size, y_size, c_size, t_size, z_size = nd2dim(path_nd2)
 
@@ -25,10 +36,20 @@ function nd2read(path_nd2; ch=1, t=1)
     stack_
 end
 
+"""
+    nd2dim(path_nd2)
+
+Returns dim of the file in (x, y, c, t, z)
+
+Arguments
+---------
+* `path_nd2`: .nd2 file to read
+"""
 function nd2dim(path_nd2)
     @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
         @assert eltype(images.get_frame_2D(c=0,t=0,z=0)) == UInt16
-        x_size, y_size, c_size, t_size, z_size = [images.sizes[k] for k = ["x", "y", "c", "t", "z"]]
+        x_size, y_size, c_size, t_size, z_size = [images.sizes[k] for k =
+            ["x", "y", "c", "t", "z"]]
         return (x_size, y_size, c_size, t_size, z_size)
     end
 end
@@ -38,6 +59,17 @@ function rotate_img(img, θ)
     ImageTransformations.warp(img, tfm)
 end
 
+"""
+    nd2preview(path_nd2; ch=1, return_data=false)
+
+Preview MIP of first, middle, and last time points in the .nd2 file
+
+Arguments
+---------
+* `path_nd2`: .nd2 file to read
+* `ch`: ch to use. Default: 1 (first ch)
+* `return_data`: if true returns the images as array
+"""
 function nd2preview(path_nd2; ch=1, return_data=false)
     x_size, y_size, c_size, t_size, z_size = nd2dim(path_nd2)
 
@@ -46,7 +78,8 @@ function nd2preview(path_nd2; ch=1, return_data=false)
     @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
         for (n_, t_) = enumerate(t_list)
             for z_ = 1:z_size
-                stack_[z_,:,:,n_] = transpose(images.get_frame_2D(c=ch-1, t=t_-1, z=z_-1))
+                stack_[z_,:,:,n_] = transpose(images.get_frame_2D(c=ch-1,
+                    t=t_-1, z=z_-1))
             end
         end
     end
@@ -63,7 +96,22 @@ function nd2preview(path_nd2; ch=1, return_data=false)
     return_data && return stack_
 end
 
-function nd2preview(stack::Array; θ, x_crop=nothing, y_crop=nothing, z_crop=nothing)
+"""
+    nd2preview(stack::Array; θ, x_crop=nothing, y_crop=nothing,
+        z_crop=nothing)
+
+Preview MIP of rotatation and x, y, z cropping
+
+Arguments
+---------
+* `stack`: array (e.g. returned from nd2preview) containing 3 stacks
+* `θ`: yaw angle (lateral rotation)
+* `x_crop`: range of x to use
+* `y_crop`: range of y to use
+* `z_crop`: range of z to use
+"""
+function nd2preview(stack::Array; θ, x_crop=nothing, y_crop=nothing,
+    z_crop=nothing)
     @assert size(stack, 4) == 3
 
     if z_crop == nothing
