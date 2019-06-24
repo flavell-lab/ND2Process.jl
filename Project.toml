@@ -5,6 +5,7 @@ version = "0.1.0"
 
 [deps]
 CoordinateTransformations = "150eb455-5306-5404-9cee-2592286d6298"
+HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
 Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
 MHDIO = "7d797e2a-7db6-11e9-07d5-4fa370062df3"
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"

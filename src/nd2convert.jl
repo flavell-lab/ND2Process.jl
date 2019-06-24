@@ -1,76 +1,3 @@
-function nd2dim(path_nd2)
-    @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
-        @assert eltype(images.get_frame_2D(c=0,t=0,z=0)) == UInt16
-        x_size, y_size, c_size, t_size, z_size = [images.sizes[k] for k = ["x", "y", "c", "t", "z"]]
-        return (x_size, y_size, c_size, t_size, z_size)
-    end
-end
-
-function rotate_img(img, θ)
-    tfm = recenter(RotMatrix(θ), center(img))
-    ImageTransformations.warp(img, tfm)
-end
-
-function nd2preview(path_nd2; ch=1, return_data=false)
-    x_size, y_size, c_size, t_size, z_size = nd2dim(path_nd2)
-
-    t_list = [1, round(Int, t_size / 2), t_size]
-    stack_ = zeros(UInt16, z_size, x_size, y_size, 3)
-    @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
-        for (n_, t_) = enumerate(t_list)
-            for z_ = 1:z_size
-                stack_[z_,:,:,n_] = transpose(images.get_frame_2D(c=ch-1, t=t_-1, z=z_-1))
-            end
-        end
-    end
-
-    stack_MIP = Float64.(dropdims(maximum(stack_, dims=1), dims=1))
-
-    for i = 1:3
-        subplot(1,3,i)
-        imshow(stack_MIP[:,:,i])
-        title("t=$(t_list[i]+1)")
-    end
-    tight_layout()
-
-    return_data && return stack_
-end
-
-function nd2preview(stack::Array; θ, x_crop=nothing, y_crop=nothing, z_crop=nothing)
-    @assert size(stack, 4) == 3
-
-    if z_crop == nothing
-        z_crop = 1:size(stack, 1)
-    end
-    if y_crop == nothing
-        y_crop = 1:size(stack, 2)
-    end
-    if x_crop == nothing
-        x_crop = 1:size(stack, 3)
-    end
-
-
-    stack_MIP = Float64.(dropdims(maximum(stack[z_crop,:,:,:], dims=1), dims=1))
-    stack_MIP_proc = zeros(eltype(stack_MIP), length(x_crop), length(y_crop), 3)
-
-    for i = 1:3
-        stack_MIP_proc[:,:,i] = rotate_img(stack_MIP[:,:,i], θ)[x_crop, y_crop]
-    end
-
-    for i = 1:3
-        subplot(1,3,i)
-        imshow(stack_MIP_proc[:,:,i])
-    end
-    tight_layout()
-
-    if true in isnan.(stack_MIP_proc)
-        @warn "transformed data contains NaN due to rotation."
-    end
-
-    println(size(stack_MIP_proc, 1) ./ [2,4,8,16])
-    println(size(stack_MIP_proc, 2) ./ [2,4,8,16])
-end
-
 function nd2_to_mhd(path_nd2, path_save,
     spacing_lat, spacing_axi, generate_MIP::Bool,
     θ, x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
@@ -146,4 +73,65 @@ function nd2_to_mhd(path_nd2, path_save,
 
         end
     end
+end
+
+function nd2_to_h5(path_nd2, path_save,
+    spacing_lat, spacing_axi, generate_MIP::Bool,
+    θ, x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
+    y_crop::Union{Nothing, UnitRange{Int64}}=nothing;
+    z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1])
+
+    if splitext(path_save)[2] != ".h5"
+        error("path_save must end with .h5")
+    end
+
+    x_size, y_size, c_size, t_size, z_size = nd2dim(path_nd2)
+
+    x_size_save = Int(0)
+    y_size_save = Int(0)
+    z_size_save = Int(0)
+
+    if z_crop == nothing
+        z_size_save = z_size
+        z_crop = 1:z_size
+    else
+        z_size_save = length(z_crop)
+    end
+    if x_crop == nothing
+        x_size_save = x_size
+        x_crop = 1:x_size
+    else
+        x_size_save = length(x_crop)
+    end
+    if y_crop == nothing
+        y_size_save = y_size
+        y_crop = 1:y_size
+    else
+        y_size_save = length(y_crop)
+    end
+
+
+    img_ = zeros(UInt16, x_size, y_size)
+
+    @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
+
+        h5open(path_save, "w") do f
+            dset = d_create(f, "data", datatype(UInt16),
+            dataspace(length(chs), t_size, z_size_save, y_size_save,
+            x_size_save), "chunk", (1, 1, 1, x_size_save, y_size_save))
+
+            @showprogress for t_ = 1:t_size
+                for (n_c, c_) = enumerate(chs)
+                    for (n_z, z_) = enumerate(z_crop)
+                        # load
+                        img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
+                            t=t_-1, z=z_-1)))
+                        # rotate, crop, convert to UInt16, and save
+                        dset[n_c, t_, n_z, :, :] = round.(UInt16,
+                            rotate_img(img_, θ)[x_crop, y_crop])
+                    end # for
+                end # for
+            end # for
+        end # h5open
+    end # pywith
 end
