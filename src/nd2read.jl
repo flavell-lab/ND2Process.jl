@@ -51,7 +51,7 @@ function nd2dim(path_nd2, verbose=false)
         @assert eltype(images.get_frame_2D(c=0,t=0,z=0)) == UInt16
         x_size, y_size, c_size, t_size, z_size = [images.sizes[k] for k =
             ["x", "y", "c", "t", "z"]]
-        println("$x:x_size, $y:y_size, $c:c_size, t:$t_size, z:$z_size")
+        println("x:$x_size, y:$y_size, c:$c_size, t:$t_size, z:$z_size")
         return (x_size, y_size, c_size, t_size, z_size)
     end
 end
