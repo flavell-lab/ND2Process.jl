@@ -30,7 +30,7 @@ function nd2_to_mhd(path_nd2, path_save,
     MHD_dir_name="MHD", MIP_dir_name="MIP")
 
     mhd_paths = []
-    x_size, y_size, c_size, t_size, z_size = nd2dim(path_nd2)
+    x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
 
     # directories
     f_basename = splitext(basename(path_nd2))[1]
@@ -90,9 +90,9 @@ function nd2_to_mhd(path_nd2, path_save,
             path_file_raw = joinpath(path_dir_MHD, save_basename * ".raw")
 
             # save MHD
-            write_raw(path_file_raw, permutedims(vol_, [2,1,3]))
+            write_raw(path_file_raw, vol_)
             write_MHD_spec(path_file_MHD, spacing_lat, spacing_axi,
-                    y_size_save, x_size_save, z_size_save, save_basename * ".raw")
+                    x_size_save, y_size_save, z_size_save, save_basename * ".raw")
 
             # save MIP
             if generate_MIP
