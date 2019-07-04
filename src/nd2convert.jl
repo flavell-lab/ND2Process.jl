@@ -74,7 +74,8 @@ function nd2_to_mhd(path_nd2, path_save,
         for c_ = chs
             for (n_, z_) = enumerate(z_crop)
                 # load
-                img_ = Float64.(transpose(images.get_frame_2D(c=c_-1, t=t_-1, z=z_-1)))
+                img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
+                    t=t_-1, z=z_-1)))
 
                 # rotate, crop, convert to UInt16
                 if isnothing(θ)
@@ -92,12 +93,14 @@ function nd2_to_mhd(path_nd2, path_save,
             # save MHD
             write_raw(path_file_raw, vol_)
             write_MHD_spec(path_file_MHD, spacing_lat, spacing_axi,
-                    x_size_save, y_size_save, z_size_save, save_basename * ".raw")
+                    x_size_save, y_size_save, z_size_save,
+                        save_basename * ".raw")
 
             # save MIP
             if generate_MIP
                 path_file_MIP = joinpath(path_dir_MIP, save_basename * ".png")
-                imsave(path_file_MIP, dropdims(maximum(vol_, dims=3), dims=3), cmap="gray")
+                imsave(path_file_MIP, dropdims(maximum(vol_, dims=3), dims=3),
+                    cmap="gray")
             end
         end
 
@@ -113,7 +116,7 @@ end
 
 Saves nd2 into HDF5 file after rotating and cropping. Rotation is skipped if
 θ is set to `nothing`. Note: indexing is 1 based. Array axis is in the following
-order: [ch, t, z, x, y]
+order: [x, y, z, t, c]
 
 Arguments
 ---------
@@ -136,7 +139,7 @@ function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi, θ,
         error("path_save must end with .h5")
     end
 
-    x_size, y_size, c_size, t_size, z_size = nd2dim(path_nd2)
+    x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
 
     x_size_save = Int(0)
     y_size_save = Int(0)
@@ -168,8 +171,8 @@ function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi, θ,
 
         h5open(path_save, "w") do f
             dset = d_create(f, "data", datatype(UInt16),
-            dataspace(length(chs), t_size, z_size_save, x_size_save,
-                y_size_save), "chunk", (1, 1, 1, x_size_save, y_size_save))
+            dataspace(x_size_save, y_size_save, z_size_save, t_size,
+                length(chs)), "chunk", (x_size_save, y_size_save, 1, 1, 1))
 
             @showprogress for t_ = 1:t_size
                 for (n_c, c_) = enumerate(chs)
@@ -179,9 +182,9 @@ function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi, θ,
                             t=t_-1, z=z_-1)))
                         # rotate, crop, convert to UInt16, and save
                         if isnothing(θ)
-                            dset[n_c, t_, n_z, :, :] = img_[x_crop, y_crop]
+                            dset[:, :, n_z, t_, n_c] = img_[x_crop, y_crop]
                         else
-                            dset[n_c, t_, n_z, :, :] = round.(UInt16,
+                            dset[:, :, n_z, t_, n_c] = round.(UInt16,
                                 rotate_img(img_, θ)[x_crop, y_crop])
                         end
                     end # for
