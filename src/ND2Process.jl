@@ -11,6 +11,7 @@ include("utils.jl")
 export
     # nd2read.jl
     nd2preview,
+    nd2preview_crop,
     nd2dim,
     nd2read,
     # nd2convert.jl
