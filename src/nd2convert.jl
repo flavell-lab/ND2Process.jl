@@ -1,8 +1,8 @@
 """
     nd2_to_mhd(path_nd2, path_save,
-        spacing_lat, spacing_axi, generate_MIP::Bool,
-        θ, x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
-        y_crop::Union{Nothing, UnitRange{Int64}}=nothing;
+        spacing_lat, spacing_axi, generate_MIP::Bool;
+        θ=nothing, x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
+        y_crop::Union{Nothing, UnitRange{Int64}}=nothing,
         z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1],
         MHD_dir_name="MHD", MIP_dir_name="MIP")
 
@@ -111,9 +111,9 @@ function nd2_to_mhd(path_nd2, path_save,
 end
 
 """
-    nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi, θ,
+    nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi; θ=nothing,
         x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
-        y_crop::Union{Nothing, UnitRange{Int64}}=nothing;
+        y_crop::Union{Nothing, UnitRange{Int64}}=nothing,
         z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1])
 
 Saves nd2 into HDF5 file after rotating and cropping. Rotation is skipped if
