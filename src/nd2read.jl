@@ -51,7 +51,10 @@ function nd2dim(path_nd2, verbose=false)
         @assert eltype(images.get_frame_2D(c=0,t=0,z=0)) == UInt16
         x_size, y_size, c_size, t_size, z_size = [images.sizes[k] for k =
             ["x", "y", "c", "t", "z"]]
-        # println("x:$x_size, y:$y_size, c:$c_size, t:$t_size, z:$z_size")
+        if verbose
+            println("x:$x_size, y:$y_size, c:$c_size, t:$t_size, z:$z_size")
+        end
+
         return (x_size, y_size, z_size, t_size, c_size)
     end
 end
@@ -62,7 +65,7 @@ function rotate_img(img, θ)
 end
 
 """
-    nd2preview(path_nd2; ch=1, return_data=false)
+    nd2preview(path_nd2; ch=1, return_data=false, z_crop=nothing)
 
 Preview MIP of first, middle, and last time points in the .nd2 file
 
@@ -70,7 +73,8 @@ Arguments
 ---------
 * `path_nd2`: .nd2 file to read
 * `ch`: ch to use. Default: 1 (first ch)
-* `return_data`: if true returns the images as array
+* `return_data`: if true returns the 3 images as array
+* `z_crop`: selecting z range to use. e.g. `3:15` then only use slice 3 to 15
 """
 function nd2preview(path_nd2; ch=1, return_data=false, z_crop=nothing)
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
@@ -112,20 +116,21 @@ function nd2preview(path_nd2; ch=1, return_data=false, z_crop=nothing)
 end
 
 """
-    nd2preview(stack::Array; θ, x_crop=nothing, y_crop=nothing,
+    nd2preview_crop(stack::Array; θ, x_crop=nothing, y_crop=nothing,
         z_crop=nothing)
 
 Preview MIP of rotatation and x, y, z cropping
 
 Arguments
 ---------
-* `stack`: array (e.g. returned from nd2preview) containing 3 stacks
+* `stack`: array (e.g. returned from `nd2preview` with `return_data=true`)
+containing 3 stacks
 * `θ`: yaw angle (lateral rotation)
 * `x_crop`: range of x to use
 * `y_crop`: range of y to use
 * `z_crop`: range of z to use
 """
-function nd2preview(stack::Array; θ, x_crop=nothing, y_crop=nothing,
+function nd2preview_crop(stack::Array; θ, x_crop=nothing, y_crop=nothing,
     z_crop=nothing)
     @assert size(stack, 4) == 3
 
