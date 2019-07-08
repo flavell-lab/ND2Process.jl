@@ -25,9 +25,9 @@ Arguments
 * `MIP_dir_name`: name of the subfolder to save MIP files
 """
 function nd2_to_mhd(path_nd2, path_save,
-    spacing_lat, spacing_axi, generate_MIP::Bool,
+    spacing_lat, spacing_axi, generate_MIP::Bool;
     θ, x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
-    y_crop::Union{Nothing, UnitRange{Int64}}=nothing;
+    y_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1],
     MHD_dir_name="MHD", MIP_dir_name="MIP")
 
@@ -133,9 +133,9 @@ Arguments
 * `z_crop`: z range to use. Full range if nothing
 * `chs`: ch to use
 """
-function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi, θ,
+function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi; θ=nothing,
     x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
-    y_crop::Union{Nothing, UnitRange{Int64}}=nothing;
+    y_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1])
 
     if splitext(path_save)[2] != ".h5"
