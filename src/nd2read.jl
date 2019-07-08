@@ -132,8 +132,8 @@ containing 3 stacks
 * `y_crop`: range of y to use
 * `z_crop`: range of z to use
 """
-function nd2preview_crop(stack::Array; θ, x_crop=nothing, y_crop=nothing,
-    z_crop=nothing)
+function nd2preview_crop(stack::Array; θ=nothing, x_crop=nothing,
+    y_crop=nothing, z_crop=nothing)
     @assert size(stack, 4) == 3
 
     if z_crop == nothing
@@ -151,7 +151,12 @@ function nd2preview_crop(stack::Array; θ, x_crop=nothing, y_crop=nothing,
     stack_MIP_proc = zeros(eltype(stack_MIP), length(x_crop), length(y_crop), 3)
 
     for i = 1:3
-        stack_MIP_proc[:,:,i] = rotate_img(stack_MIP[:,:,i], θ)[x_crop, y_crop]
+        if θ == nothing
+            stack_MIP_proc[:,:,i] = stack_MIP[x_crop,y_crop,i]
+        else
+            stack_MIP_proc[:,:,i] = rotate_img(stack_MIP[:,:,i],
+                θ)[x_crop, y_crop]
+        end
     end
 
     for i = 1:3
