@@ -119,7 +119,7 @@ end
 Saves nd2 into HDF5 file after rotating and cropping. Rotation is skipped if
 θ is set to `nothing`. Note: indexing is 1 based. Array axis is in the following
 order: [x, y, z, t, c]. HDF5 file is chunked with:
-(x\_size\_save, y\_size\_save, 1, 1, 1)
+(x size, y size, z size, 1, 1, 1)
 
 Arguments
 ---------
