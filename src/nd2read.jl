@@ -7,7 +7,7 @@ Arguments
 ---------
 * `path_nd2`: .nd2 file to read
 * `ch`: ch to read. First ch: 1
-* `t`: time point to read. Can be multiple. First t: 1
+* `t`: time point to read. Can be multiple (e.g. [1,2,10], 1:20). First t: 1
 """
 function nd2read(path_nd2; ch=1, t=1)
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
@@ -15,20 +15,13 @@ function nd2read(path_nd2; ch=1, t=1)
     stack_ = (length(t) == 1) ? zeros(UInt16, x_size, y_size, z_size) : zeros(
         UInt16, x_size, y_size, z_size, length(t))
 
-    if length(t) > 1 # multiple time point
-        @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
-            for (n_, t_) = enumerate(t)
-                for z_ = 1:z_size
-                    stack_[:,:,z_,n_] = transpose(images.get_frame_2D(c=ch-1,
-                        t=t_-1, z=z_-1))
-                end
-            end
-        end
-    else # 1 time point
-        @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
+    if typeof(t) == Int t = [t] end
+
+    @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
+        for (n_, t_) = enumerate(t)
             for z_ = 1:z_size
-                stack_[:,:,z_] = transpose(images.get_frame_2D(c=ch-1, t=t-1,
-                    z=z_-1))
+                stack_[:,:,z_,n_] = transpose(images.get_frame_2D(c=ch-1,
+                t=t_-1, z=z_-1))
             end
         end
     end
