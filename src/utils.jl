@@ -3,3 +3,7 @@ function create_dir(dirpath::String)
         mkdir(dirpath)
     end
 end
+
+function maxprj(array; dims)
+    dropdims(maximum(array, dims=dims), dims=dims)
+end

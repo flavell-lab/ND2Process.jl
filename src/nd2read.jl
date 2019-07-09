@@ -126,7 +126,7 @@ Preview MIP of rotatation and x, y, z cropping
 Arguments
 ---------
 * `stack`: array (e.g. returned from `nd2preview` with `return_data=true`)
-containing 3 stacks
+containing 3 stacks; a 3D volume; or a 2D image.
 * `θ`: yaw angle (lateral rotation)
 * `x_crop`: range of x to use
 * `y_crop`: range of y to use
@@ -134,7 +134,6 @@ containing 3 stacks
 """
 function nd2preview_crop(stack::Array; θ=nothing, x_crop=nothing,
     y_crop=nothing, z_crop=nothing)
-    @assert size(stack, 4) == 3
 
     if z_crop == nothing
         z_crop = 1:size(stack, 3)
@@ -146,24 +145,43 @@ function nd2preview_crop(stack::Array; θ=nothing, x_crop=nothing,
         x_crop = 1:size(stack, 1)
     end
 
+    local stack_MIP_proc
 
-    stack_MIP = Float64.(dropdims(maximum(stack[:,:,z_crop,:], dims=3), dims=3))
-    stack_MIP_proc = zeros(eltype(stack_MIP), length(x_crop), length(y_crop), 3)
+    if size(stack, 4) == 3 # nd2preview returned 3 time points stack
+        stack_MIP = Float64.(maxprj(stack[:,:,z_crop,:], dims=3))
+        stack_MIP_proc = zeros(eltype(stack_MIP), length(x_crop),
+            length(y_crop), 3)
 
-    for i = 1:3
-        if θ == nothing
-            stack_MIP_proc[:,:,i] = stack_MIP[x_crop,y_crop,i]
-        else
-            stack_MIP_proc[:,:,i] = rotate_img(stack_MIP[:,:,i],
-                θ)[x_crop, y_crop]
+        for i = 1:3
+            if θ == nothing
+                stack_MIP_proc[:,:,i] = stack_MIP[x_crop,y_crop,i]
+            else
+                stack_MIP_proc[:,:,i] = rotate_img(stack_MIP[:,:,i],
+                    θ)[x_crop, y_crop]
+            end
         end
-    end
 
-    for i = 1:3
-        subplot(1,3,i)
-        imshow(stack_MIP_proc[:,:,i])
+        for i = 1:3
+            subplot(1,3,i)
+            imshow(stack_MIP_proc[:,:,i])
+        end
+        tight_layout()
+    elseif size(stack, 3) != 1 # 3D volume
+        stack_MIP = Float64.(maxprj(stack[:,:,z_crop], dims=3))
+        if θ == nothing
+            stack_MIP_proc = stack_MIP[x_crop,y_crop]
+        else
+            stack_MIP_proc = rotate_img(stack_MIP, θ)[x_crop, y_crop]
+        end
+        imshow(stack_MIP_proc)
+    else # 2D image
+        if θ == nothing
+            stack_MIP_proc = stack[x_crop,y_crop]
+        else
+            stack_MIP_proc = rotate_img(Float64.(stack), θ)[x_crop, y_crop]
+        end
+        imshow(stack_MIP_proc)
     end
-    tight_layout()
 
     if true in isnan.(stack_MIP_proc)
         @warn "transformed data contains NaN due to rotation."
