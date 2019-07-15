@@ -203,3 +203,62 @@ function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi; θ=nothing,
         h5writeattr(path_save, "data", dict_attr)
     end # pywith
 end
+
+function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=:drop_first)
+    x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
+
+    nd2dir = dirname(path_nd2)
+    dir_MIP = joinpath(nd2dir, "MIP_original")
+    dir_movie = joinpath(nd2dir, "movie_original")
+    f_basename = splitext(basename(path_nd2))[1]
+
+    create_dir(dir_MIP)
+    create_dir(dir_movie)
+
+    z_size_save = Int(0)
+
+    if z_crop == nothing
+        z_size_save = z_size
+        z_crop = 1:z_size
+    elseif z_crop == :drop_first
+        z_size_save = z_size - 1
+        z_crop = 2:z_size
+    else
+        z_size_save = length(z_crop)
+    end
+
+    vol_ = zeros(UInt16, x_size, y_size, z_size_save)
+    img_MIP_ = zeros(UInt16, x_size, y_size)
+    n_leading_zero = 4
+
+    # png generation
+    @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
+        @showprogress for t_ = 1:t_size
+            for (n_c, c_) = enumerate(chs)
+                for (n_z, z_) = enumerate(z_crop)
+                    vol_[:,:,n_z] = Float64.(transpose(images.get_frame_2D(
+                        c=c_-1, t=t_-1, z=z_-1)))
+                end #z
+                img_MIP_ = maxprj(vol_, dims=prjdim)
+                name_png_ = f_basename * "_c" * lpad(string(c_), 2, "0") *
+                    "_t" * lpad(string(t_), n_leading_zero, "0") * ".png"
+                path_png_ = joinpath(dir_MIP, name_png_)
+                imsave(path_png_, img_MIP_, cmap="gray", vmax=1000)
+            end # c
+        end # t
+    end # pywith
+
+    # movie generation
+    try
+        for c_ = chs
+            for fps_ = [30,60,120,240]
+                encode_movie(joinpath(dir_MIP, f_basename * "_c" *
+                    lpad(string(c_), 2, "0") * "_t%0$(n_leading_zero)d.png"),
+                    joinpath(dir_movie, f_basename *
+                        "_original_$(fps_)fps.mp4"), fps=fps_);
+            end
+        end
+    catch
+        error("Cannot generate movie for $path_nd2")
+    end
+end
