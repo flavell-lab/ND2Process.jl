@@ -216,13 +216,18 @@ Arguments
 * `prjdim`: MIP projection dimension. Default: 3 (across z slices)
 * `z_crop`: z range to use. Full range if nothing. `:drop_first` drops 1st frame
 * `chs`: ch to use
+* `dir_save`: directory to save MIP images and movies
 """
-function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=:drop_first)
+function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=:drop_first,
+    dir_save=nothing)
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
 
-    nd2dir = dirname(path_nd2)
-    dir_MIP = joinpath(nd2dir, "MIP_original")
-    dir_movie = joinpath(nd2dir, "movie_original")
+    if isnothing(dir_save)
+        dir_save = dirname(path_nd2)
+    end
+
+    dir_MIP = joinpath(dir_save, "MIP_original")
+    dir_movie = joinpath(dir_save, "movie_original")
     f_basename = splitext(basename(path_nd2))[1]
 
     create_dir(dir_MIP)
