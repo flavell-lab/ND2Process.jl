@@ -204,6 +204,19 @@ function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi; θ=nothing,
     end # pywith
 end
 
+"""
+    function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=:drop_first)
+
+Saves maximum intensity projection (MIP) of nd2 file and make movies of the
+time series.
+
+Arguments
+---------
+* `path_nd2`: path of .nd2 file to use
+* `prjdim`: MIP projection dimension. Default: 3 (across z slices)
+* `z_crop`: z range to use. Full range if nothing. `:drop_first` drops 1st frame
+* `chs`: ch to use
+"""
 function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=:drop_first)
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
 
