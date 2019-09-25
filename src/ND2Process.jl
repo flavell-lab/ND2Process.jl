@@ -16,6 +16,7 @@ export
     nd2read,
     # nd2convert.jl
     nd2_to_h5,
-    nd2_to_mhd
+    nd2_to_mhd,
+    write_nd2_preview
 
 end # module
