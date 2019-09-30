@@ -23,16 +23,21 @@ Arguments
 * `chs`: ch to use
 * `MHD_dir_name`: name of the subfolder to save MHD files
 * `MIP_dir_name`: name of the subfolder to save MIP files
+* `n_bin`: number of rounds to bin. e.g. `n_bin=2` results in 4x4 binning
 """
 function nd2_to_mhd(path_nd2, path_save,
     spacing_lat, spacing_axi, generate_MIP::Bool;
     θ=nothing, x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     y_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1],
-    MHD_dir_name="MHD", MIP_dir_name="MIP")
+    MHD_dir_name="MHD", MIP_dir_name="MIP", n_bin=nothing)
 
     mhd_paths = []
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
+    if !isnothing(n_bin)
+        x_size = floor(Int, x_size / (2 ^ n_bin))
+        y_size = floor(Int, y_size / (2 ^ n_bin))
+    end
 
     # directories
     f_basename = splitext(basename(path_nd2))[1]
@@ -78,6 +83,11 @@ function nd2_to_mhd(path_nd2, path_save,
                 # load
                 img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
                     t=t_-1, z=z_-1)))
+
+                # binning
+                if !isnothing(n_bin)
+                    img_ = round.(eltype(img_), bin_img(img_, n_bin))
+                end
 
                 # rotate, crop, convert to UInt16
                 if isnothing(θ)
@@ -132,17 +142,23 @@ Arguments
 * `y_crop`: y range to use. Full range if nothing
 * `z_crop`: z range to use. Full range if nothing
 * `chs`: ch to use
+* `n_bin`: number of rounds to bin. e.g. `n_bin=2` results in 4x4 binning
 """
 function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi; θ=nothing,
     x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     y_crop::Union{Nothing, UnitRange{Int64}}=nothing,
-    z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1])
+    z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1],
+    n_bin=nothing)
 
     if splitext(path_save)[2] != ".h5"
         error("path_save must end with .h5")
     end
 
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
+    if !isnothing(n_bin)
+        x_size = floor(Int, x_size / (2 ^ n_bin))
+        y_size = floor(Int, y_size / (2 ^ n_bin))
+    end
 
     x_size_save = Int(0)
     y_size_save = Int(0)
@@ -183,6 +199,12 @@ function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi; θ=nothing,
                         # load
                         img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
                             t=t_-1, z=z_-1)))
+
+                        # binning
+                        if !isnothing(n_bin)
+                            img_ = round.(eltype(img_), bin_img(img_, n_bin))
+                        end
+
                         # rotate, crop, convert to UInt16, and save
                         if isnothing(θ)
                             dset[:, :, n_z, t_, n_c] = img_[x_crop, y_crop]

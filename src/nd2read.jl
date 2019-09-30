@@ -70,13 +70,14 @@ Arguments
 * `ch`: ch to use. Default: 1 (first ch)
 * `return_data`: if true returns the 3 images as array
 * `z_crop`: selecting z range to use. e.g. `3:15` then only use slice 3 to 15
+* `n_bin`: number of rounds to bin. e.g. `n_bin=2` results in 4x4 binning
 """
 function nd2preview(path_nd2; ch=1, return_data=false, z_crop=nothing,
     n_bin=nothing)
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
     if !isnothing(n_bin)
-        x_size = floor(Int, x_size / 2)
-        y_size = floor(Int, y_size / 2)
+        x_size = floor(Int, x_size / (2 ^ n_bin))
+        y_size = floor(Int, y_size / (2 ^ n_bin))
     end
 
     # first, middle, last time point
