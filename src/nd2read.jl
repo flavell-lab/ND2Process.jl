@@ -79,6 +79,7 @@ function nd2preview(path_nd2; ch=1, return_data=false, z_crop=nothing,
         y_size = floor(Int, y_size / 2)
     end
 
+    # first, middle, last time point
     t_list = [1, round(Int, t_size / 2), t_size]
 
     z_size_use = Int(0)
