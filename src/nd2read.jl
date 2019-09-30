@@ -8,9 +8,14 @@ Arguments
 * `path_nd2`: .nd2 file to read
 * `ch`: ch to read. First ch: 1
 * `t`: time point to read. Can be multiple (e.g. [1,2,10], 1:20). First t: 1
+* `n_bin`: number of rounds to bin. e.g. `n_bin=2` results in 4x4 binning
 """
-function nd2read(path_nd2; ch=1, t=1)
+function nd2read(path_nd2; ch=1, t=1, n_bin=nothing)
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
+    if !isnothing(n_bin)
+        x_size = floor(Int, x_size / (2 ^ n_bin))
+        y_size = floor(Int, y_size / (2 ^ n_bin))
+    end
 
     stack_ = (length(t) == 1) ? zeros(UInt16, x_size, y_size, z_size) : zeros(
         UInt16, x_size, y_size, z_size, length(t))
@@ -20,8 +25,9 @@ function nd2read(path_nd2; ch=1, t=1)
     @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
         for (n_, t_) = enumerate(t)
             for z_ = 1:z_size
-                stack_[:,:,z_,n_] = transpose(images.get_frame_2D(c=ch-1,
-                t=t_-1, z=z_-1))
+                img_ = transpose(images.get_frame_2D(c=ch-1, t=t_-1, z=z_-1))
+                stack_[:,:,z_,n_] = !isnothing(n_bin) ? round.(UInt16,
+                    bin_img(img_, n_bin)) : img_
             end
         end
     end
