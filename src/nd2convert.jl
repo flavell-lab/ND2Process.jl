@@ -86,12 +86,12 @@ function nd2_to_mhd(path_nd2, path_save,
 
                 # binning
                 if !isnothing(n_bin)
-                    img_ = round.(eltype(img_), bin_img(img_, n_bin))
+                    img_ = bin_img(img_, n_bin)
                 end
 
                 # rotate, crop, convert to UInt16
                 if isnothing(θ)
-                    vol_[:,:,n_] = img_[x_crop, y_crop]
+                    vol_[:,:,n_] = round.(UInt16, img_[x_crop, y_crop])
                 else
                     vol_[:,:,n_] = round.(UInt16,
                         rotate_img(img_, θ)[x_crop, y_crop])
@@ -202,12 +202,13 @@ function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi; θ=nothing,
 
                         # binning
                         if !isnothing(n_bin)
-                            img_ = round.(eltype(img_), bin_img(img_, n_bin))
+                            img_ = bin_img(img_, n_bin)
                         end
 
                         # rotate, crop, convert to UInt16, and save
                         if isnothing(θ)
-                            dset[:, :, n_z, t_, n_c] = img_[x_crop, y_crop]
+                            dset[:, :, n_z, t_, n_c] = round.(UInt16,
+                            img_[x_crop, y_crop])
                         else
                             dset[:, :, n_z, t_, n_c] = round.(UInt16,
                                 rotate_img(img_, θ)[x_crop, y_crop])
