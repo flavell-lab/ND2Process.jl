@@ -8,9 +8,14 @@ Arguments
 * `path_nd2`: .nd2 file to read
 * `ch`: ch to read. First ch: 1
 * `t`: time point to read. Can be multiple (e.g. [1,2,10], 1:20). First t: 1
+* `n_bin`: number of rounds to bin. e.g. `n_bin=2` results in 4x4 binning
 """
-function nd2read(path_nd2; ch=1, t=1)
+function nd2read(path_nd2; ch=1, t=1, n_bin=nothing)
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
+    if !isnothing(n_bin)
+        x_size = floor(Int, x_size / (2 ^ n_bin))
+        y_size = floor(Int, y_size / (2 ^ n_bin))
+    end
 
     stack_ = (length(t) == 1) ? zeros(UInt16, x_size, y_size, z_size) : zeros(
         UInt16, x_size, y_size, z_size, length(t))
@@ -20,8 +25,9 @@ function nd2read(path_nd2; ch=1, t=1)
     @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
         for (n_, t_) = enumerate(t)
             for z_ = 1:z_size
-                stack_[:,:,z_,n_] = transpose(images.get_frame_2D(c=ch-1,
-                t=t_-1, z=z_-1))
+                img_ = transpose(images.get_frame_2D(c=ch-1, t=t_-1, z=z_-1))
+                stack_[:,:,z_,n_] = !isnothing(n_bin) ? round.(UInt16,
+                    bin_img(img_, n_bin)) : img_
             end
         end
     end
@@ -70,10 +76,17 @@ Arguments
 * `ch`: ch to use. Default: 1 (first ch)
 * `return_data`: if true returns the 3 images as array
 * `z_crop`: selecting z range to use. e.g. `3:15` then only use slice 3 to 15
+* `n_bin`: number of rounds to bin. e.g. `n_bin=2` results in 4x4 binning
 """
-function nd2preview(path_nd2; ch=1, return_data=false, z_crop=nothing)
+function nd2preview(path_nd2; ch=1, return_data=false, z_crop=nothing,
+    n_bin=nothing)
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
+    if !isnothing(n_bin)
+        x_size = floor(Int, x_size / (2 ^ n_bin))
+        y_size = floor(Int, y_size / (2 ^ n_bin))
+    end
 
+    # first, middle, last time point
     t_list = [1, round(Int, t_size / 2), t_size]
 
     z_size_use = Int(0)
@@ -88,8 +101,11 @@ function nd2preview(path_nd2; ch=1, return_data=false, z_crop=nothing)
     @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
         for (n_t, t_) = enumerate(t_list)
             for (n_z, z_) = enumerate(z_crop)
-                stack_[:,:,n_z,n_t] = transpose(images.get_frame_2D(c=ch-1,
-                    t=t_-1, z=z_-1))
+                img_ = transpose(images.get_frame_2D(c=ch-1, t=t_-1, z=z_-1))
+
+                # perform binning if requested and save to stack
+                stack_[:,:,n_z,n_t] = !isnothing(n_bin) ? round.(eltype(img_),
+                    bin_img(img_, n_bin)) : img_
             end
         end
     end

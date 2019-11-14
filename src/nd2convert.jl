@@ -23,16 +23,21 @@ Arguments
 * `chs`: ch to use
 * `MHD_dir_name`: name of the subfolder to save MHD files
 * `MIP_dir_name`: name of the subfolder to save MIP files
+* `n_bin`: number of rounds to bin. e.g. `n_bin=2` results in 4x4 binning
 """
 function nd2_to_mhd(path_nd2, path_save,
     spacing_lat, spacing_axi, generate_MIP::Bool;
     θ=nothing, x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     y_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1],
-    MHD_dir_name="MHD", MIP_dir_name="MIP")
+    MHD_dir_name="MHD", MIP_dir_name="MIP", n_bin=nothing)
 
     mhd_paths = []
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
+    if !isnothing(n_bin)
+        x_size = floor(Int, x_size / (2 ^ n_bin))
+        y_size = floor(Int, y_size / (2 ^ n_bin))
+    end
 
     # directories
     f_basename = splitext(basename(path_nd2))[1]
@@ -79,9 +84,14 @@ function nd2_to_mhd(path_nd2, path_save,
                 img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
                     t=t_-1, z=z_-1)))
 
+                # binning
+                if !isnothing(n_bin)
+                    img_ = bin_img(img_, n_bin)
+                end
+
                 # rotate, crop, convert to UInt16
                 if isnothing(θ)
-                    vol_[:,:,n_] = img_[x_crop, y_crop]
+                    vol_[:,:,n_] = round.(UInt16, img_[x_crop, y_crop])
                 else
                     vol_[:,:,n_] = round.(UInt16,
                         rotate_img(img_, θ)[x_crop, y_crop])
@@ -132,17 +142,23 @@ Arguments
 * `y_crop`: y range to use. Full range if nothing
 * `z_crop`: z range to use. Full range if nothing
 * `chs`: ch to use
+* `n_bin`: number of rounds to bin. e.g. `n_bin=2` results in 4x4 binning
 """
 function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi; θ=nothing,
     x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     y_crop::Union{Nothing, UnitRange{Int64}}=nothing,
-    z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1])
+    z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1],
+    n_bin=nothing)
 
     if splitext(path_save)[2] != ".h5"
         error("path_save must end with .h5")
     end
 
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
+    if !isnothing(n_bin)
+        x_size = floor(Int, x_size / (2 ^ n_bin))
+        y_size = floor(Int, y_size / (2 ^ n_bin))
+    end
 
     x_size_save = Int(0)
     y_size_save = Int(0)
@@ -183,9 +199,16 @@ function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi; θ=nothing,
                         # load
                         img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
                             t=t_-1, z=z_-1)))
+
+                        # binning
+                        if !isnothing(n_bin)
+                            img_ = bin_img(img_, n_bin)
+                        end
+
                         # rotate, crop, convert to UInt16, and save
                         if isnothing(θ)
-                            dset[:, :, n_z, t_, n_c] = img_[x_crop, y_crop]
+                            dset[:, :, n_z, t_, n_c] = round.(UInt16,
+                            img_[x_crop, y_crop])
                         else
                             dset[:, :, n_z, t_, n_c] = round.(UInt16,
                                 rotate_img(img_, θ)[x_crop, y_crop])
@@ -217,10 +240,16 @@ Arguments
 * `z_crop`: z range to use. Full range if nothing. `:drop_first` drops 1st frame
 * `chs`: ch to use
 * `dir_save`: directory to save MIP images and movies
+* `n_bin`: number of rounds to bin. e.g. `n_bin=2` results in 4x4 binning
 """
 function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=:drop_first,
-    dir_save=nothing)
+    dir_save=nothing, n_bin=nothing)
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
+
+    if !isnothing(n_bin)
+        x_size = floor(Int, x_size / (2 ^ n_bin))
+        y_size = floor(Int, y_size / (2 ^ n_bin))
+    end
 
     if isnothing(dir_save)
         dir_save = dirname(path_nd2)
@@ -245,8 +274,8 @@ function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=:drop_first,
         z_size_save = length(z_crop)
     end
 
-    vol_ = zeros(UInt16, x_size, y_size, z_size_save)
-    img_MIP_ = zeros(UInt16, x_size, y_size)
+    vol_ = zeros(Float32, x_size, y_size, z_size_save)
+    img_MIP_ = zeros(Float32, x_size, y_size)
     n_leading_zero = 4
 
     # png generation
@@ -254,10 +283,18 @@ function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=:drop_first,
         @showprogress for t_ = 1:t_size
             for (n_c, c_) = enumerate(chs)
                 for (n_z, z_) = enumerate(z_crop)
-                    vol_[:,:,n_z] = Float64.(transpose(images.get_frame_2D(
-                        c=c_-1, t=t_-1, z=z_-1)))
+                    img_ = Float32.(transpose(images.get_frame_2D(c=c_-1,
+                        t=t_-1, z=z_-1)))
+
+                    if !isnothing(n_bin)
+                        img_ = bin_img(img_, n_bin)
+                    end
+
+                    vol_[:,:,n_z] = img_
                 end #z
+
                 img_MIP_ = maxprj(vol_, dims=prjdim)
+
                 name_png_ = f_basename * "_c" * lpad(string(c_), 2, "0") *
                     "_t" * lpad(string(t_), n_leading_zero, "0") * ".png"
                 path_png_ = joinpath(dir_MIP, name_png_)
