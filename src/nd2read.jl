@@ -62,7 +62,7 @@ function nd2dim(path_nd2, verbose=false)
 end
 
 function rotate_img(img, θ)
-    tfm = recenter(RotMatrix(θ), center(img))
+    tfm = recenter(Rotations.RotMatrix(θ), center(img))
     ImageTransformations.warp(img, tfm)
 end
 
@@ -88,8 +88,7 @@ function nd2preview(path_nd2; ch=1, return_data=false, z_crop=nothing,
     end
 
     # first, middle, last time point
-    t_list = [1, round(Int, t_size / 2), t_size]
-
+    t_list = t_size > 3 ? [1, round(Int, t_size / 2), t_size] : [1]
     z_size_use = Int(0)
     if z_crop == nothing
         z_size_use = z_size
@@ -97,12 +96,11 @@ function nd2preview(path_nd2; ch=1, return_data=false, z_crop=nothing,
     else
         z_size_use = length(z_crop)
     end
-
-    stack_ = zeros(UInt16, x_size, y_size, z_size_use, 3)
+    stack_ = zeros(UInt16, x_size, y_size, z_size_use, length(t_list))
     @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
         for (n_t, t_) = enumerate(t_list)
             for (n_z, z_) = enumerate(z_crop)
-                img_ = transpose(images.get_frame_2D(c=ch-1, t=t_-1, z=z_-1))
+	    img_ = transpose(images.get_frame_2D(c=ch-1, t=t_-1, z=z_-1))
 
                 # perform binning if requested and save to stack
                 stack_[:,:,n_z,n_t] = !isnothing(n_bin) ? round.(eltype(img_),
@@ -113,8 +111,8 @@ function nd2preview(path_nd2; ch=1, return_data=false, z_crop=nothing,
 
     stack_MIP = Float64.(dropdims(maximum(stack_, dims=3), dims=3))
 
-    for i = 1:3
-        subplot(1,3,i)
+    for i = 1:length(t_list)
+        subplot(1,length(t_list),i)
         imshow(stack_MIP[:,:,i])
         title("t=$(t_list[i]+1)")
     end
