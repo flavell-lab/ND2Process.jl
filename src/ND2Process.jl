@@ -1,6 +1,6 @@
 module ND2Process
 
-using PyCall, PyPlot, HDF5, ProgressMeter, Images, CoordinateTransformations,
+using PyCall, PyPlot, HDF5, ProgressMeter, Images, Rotations,
     OffsetArrays, MHDIO
 
 include("init.jl")
