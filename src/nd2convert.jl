@@ -24,16 +24,22 @@ Arguments
 * `MHD_dir_name`: name of the subfolder to save MHD files
 * `MIP_dir_name`: name of the subfolder to save MIP files
 * `n_bin`: number of rounds to bin. e.g. `n_bin=2` results in 4x4 binning
+* `z_range`: number of frames per z-stack, if using a continuous timestream data series
 """
 function nd2_to_mhd(path_nd2, path_save,
     spacing_lat, spacing_axi, generate_MIP::Bool;
     θ=nothing, x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     y_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1],
-    MHD_dir_name="MHD", MIP_dir_name="MIP", n_bin=nothing)
+    MHD_dir_name="MHD", MIP_dir_name="MIP", n_bin=nothing, zrange=nothing)
 
     mhd_paths = []
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
+
+    if !isnothing(z_range)
+        z_size = z_range
+        t_size = t_size ÷ z_range
+    end
     if !isnothing(n_bin)
         x_size = floor(Int, x_size / (2 ^ n_bin))
         y_size = floor(Int, y_size / (2 ^ n_bin))
@@ -81,9 +87,13 @@ function nd2_to_mhd(path_nd2, path_save,
         for c_ = chs
             for (n_, z_) = enumerate(z_crop)
                 # load
-                img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
-                    t=t_-1, z=z_-1)))
-
+                if isnothing(z_range)
+                    img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
+                        t=t_-1, z=z_-1)))
+                else
+                    img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
+                        t=z_range*(t_-1)+z_-1, z=0)))
+                end
                 # binning
                 if !isnothing(n_bin)
                     img_ = bin_img(img_, n_bin)
