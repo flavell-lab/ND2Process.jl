@@ -31,7 +31,7 @@ function nd2_to_mhd(path_nd2, path_save,
     θ=nothing, x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     y_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1],
-    MHD_dir_name="MHD", MIP_dir_name="MIP", n_bin=nothing, zrange=nothing)
+    MHD_dir_name="MHD", MIP_dir_name="MIP", n_bin=nothing, z_range=nothing)
 
     mhd_paths = []
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
