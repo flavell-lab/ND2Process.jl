@@ -153,18 +153,24 @@ Arguments
 * `z_crop`: z range to use. Full range if nothing
 * `chs`: ch to use
 * `n_bin`: number of rounds to bin. e.g. `n_bin=2` results in 4x4 binning
+* `z_range`: number of frames per z-stack, if using a continuous timestream data series
 """
 function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi; θ=nothing,
     x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     y_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1],
-    n_bin=nothing)
+    n_bin=nothing, z_range=nothing)
 
     if splitext(path_save)[2] != ".h5"
         error("path_save must end with .h5")
     end
 
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
+    
+    if !isnothing(z_range)
+        z_size = z_range
+        t_size = t_size ÷ z_range
+    end
     if !isnothing(n_bin)
         x_size = floor(Int, x_size / (2 ^ n_bin))
         y_size = floor(Int, y_size / (2 ^ n_bin))
@@ -207,8 +213,13 @@ function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi; θ=nothing,
                 for (n_c, c_) = enumerate(chs)
                     for (n_z, z_) = enumerate(z_crop)
                         # load
-                        img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
-                            t=t_-1, z=z_-1)))
+                        if isnothing(z_range)
+                            img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
+                                t=t_-1, z=z_-1)))
+                        else
+                            img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
+                                t=z_range*(t_-1)+z_-1, z=0)))
+                        end
 
                         # binning
                         if !isnothing(n_bin)
@@ -251,9 +262,10 @@ Arguments
 * `chs`: ch to use
 * `dir_save`: directory to save MIP images and movies
 * `n_bin`: number of rounds to bin. e.g. `n_bin=2` results in 4x4 binning
+* `z_range`: number of frames per z-stack, if using a continuous timestream data series
 """
 function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=:drop_first,
-    dir_save=nothing, n_bin=nothing)
+    dir_save=nothing, n_bin=nothing, z_range=nothing)
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
 
     if !isnothing(n_bin)
@@ -273,7 +285,10 @@ function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=:drop_first,
     create_dir(dir_movie)
 
     z_size_save = Int(0)
-
+    if !isnothing(z_range)
+        z_size = z_range
+        t_size = t_size ÷ z_range
+    end
     if z_crop == nothing
         z_size_save = z_size
         z_crop = 1:z_size
@@ -293,9 +308,14 @@ function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=:drop_first,
         @showprogress for t_ = 1:t_size
             for (n_c, c_) = enumerate(chs)
                 for (n_z, z_) = enumerate(z_crop)
-                    img_ = Float32.(transpose(images.get_frame_2D(c=c_-1,
-                        t=t_-1, z=z_-1)))
-
+                    # load
+		    if isnothing(z_range)
+                        img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
+                            t=t_-1, z=z_-1)))
+                    else
+                        img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
+                            t=z_range*(t_-1)+z_-1, z=0)))
+                    end
                     if !isnothing(n_bin)
                         img_ = bin_img(img_, n_bin)
                     end
