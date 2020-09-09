@@ -310,10 +310,10 @@ function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=:drop_first,
                 for (n_z, z_) = enumerate(z_crop)
                     # load
 		    if isnothing(z_range)
-                        img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
+                        img_ = Float32.(transpose(images.get_frame_2D(c=c_-1,
                             t=t_-1, z=z_-1)))
                     else
-                        img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
+                        img_ = Float32.(transpose(images.get_frame_2D(c=c_-1,
                             t=z_range*(t_-1)+z_-1, z=0)))
                     end
                     if !isnothing(n_bin)

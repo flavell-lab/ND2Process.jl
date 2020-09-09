@@ -30,10 +30,10 @@ function nd2read(path_nd2; ch=1, t=1, n_bin=nothing, z_range=nothing)
         for (n_, t_) = enumerate(t)
             for z_ = 1:z_size
                 if isnothing(z_range)
-                    img_ = transpose(images.get_frame_2D(c=c_-1,
+                    img_ = transpose(images.get_frame_2D(c=ch-1,
                         t=t_-1, z=z_-1))
                 else
-                    img_ = transpose(images.get_frame_2D(c=c_-1,
+                    img_ = transpose(images.get_frame_2D(c=ch-1,
                         t=z_range*(t_-1)+z_-1, z=0))
                 end
                 stack_[:,:,z_,n_] = !isnothing(n_bin) ? round.(UInt16,
@@ -115,10 +115,10 @@ function nd2preview(path_nd2; ch=1, return_data=false, z_crop=nothing,
         for (n_t, t_) = enumerate(t_list)
             for (n_z, z_) = enumerate(z_crop)
                 if isnothing(z_range)
-                    img_ = transpose(images.get_frame_2D(c=c_-1,
+                    img_ = transpose(images.get_frame_2D(c=ch-1,
                         t=t_-1, z=z_-1))
                 else
-                    img_ = transpose(images.get_frame_2D(c=c_-1,
+                    img_ = transpose(images.get_frame_2D(c=ch-1,
                         t=z_range*(t_-1)+z_-1, z=0))
                 end
                 # perform binning if requested and save to stack
