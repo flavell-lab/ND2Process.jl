@@ -92,7 +92,7 @@ function nd2_to_mhd(path_nd2, path_save,
                         t=t_-1, z=z_-1)))
                 else
                     img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
-                        t=z_range*(t_-1)+z_-1, z=0)))
+                        t=0, z=z_range*(t_-1)+z_-1)))
                 end
                 # binning
                 if !isnothing(n_bin)
@@ -218,7 +218,7 @@ function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi; θ=nothing,
                                 t=t_-1, z=z_-1)))
                         else
                             img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
-                                t=z_range*(t_-1)+z_-1, z=0)))
+                                t=0, z=z_range*(t_-1)+z_-1)))
                         end
 
                         # binning
@@ -314,7 +314,7 @@ function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=:drop_first,
                             t=t_-1, z=z_-1)))
                     else
                         img_ = Float32.(transpose(images.get_frame_2D(c=c_-1,
-                            t=z_range*(t_-1)+z_-1, z=0)))
+                            t=0, z=z_range*(t_-1)+z_-1)))
                     end
                     if !isnothing(n_bin)
                         img_ = bin_img(img_, n_bin)

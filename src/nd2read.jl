@@ -34,7 +34,7 @@ function nd2read(path_nd2; ch=1, t=1, n_bin=nothing, z_range=nothing)
                         t=t_-1, z=z_-1))
                 else
                     img_ = transpose(images.get_frame_2D(c=ch-1,
-                        t=z_range*(t_-1)+z_-1, z=0))
+                        t=0, z=z_range*(t_-1)+z_-1))
                 end
                 stack_[:,:,z_,n_] = !isnothing(n_bin) ? round.(UInt16,
                     bin_img(img_, n_bin)) : img_
@@ -119,7 +119,7 @@ function nd2preview(path_nd2; ch=1, return_data=false, z_crop=nothing,
                         t=t_-1, z=z_-1))
                 else
                     img_ = transpose(images.get_frame_2D(c=ch-1,
-                        t=z_range*(t_-1)+z_-1, z=0))
+                        t=0, z=z_range*(t_-1)+z_-1))
                 end
                 # perform binning if requested and save to stack
                 stack_[:,:,n_z,n_t] = !isnothing(n_bin) ? round.(eltype(img_),
