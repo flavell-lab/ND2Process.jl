@@ -59,7 +59,7 @@ function nd2dim(path_nd2, verbose=false)
     if !isfile(path_nd2) error(".nd2 file does not exist.") end
 
     @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
-        @assert eltype(images.get_frame_2D(c=0,t=0,z=0)) in [Float64, Int16]
+        @assert eltype(images.get_frame_2D(c=0,t=0,z=0)) in [Float64, UInt16]
         x_size, y_size, c_size, t_size, z_size = [get(images.sizes, k, 1) for
             k = ["x", "y", "c", "t", "z"]]
 
