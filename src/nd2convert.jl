@@ -4,7 +4,7 @@
         θ=nothing, x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
         y_crop::Union{Nothing, UnitRange{Int64}}=nothing,
         z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1],
-        MHD_dir_name="MHD", MIP_dir_name="MIP")
+        MHD_dir_name="MHD", MIP_dir_name="MIP", n_bin=nothing, n_z=nothing)
 
 Saves nd2 into MHD files after rotating and cropping. Rotation is skipped if
 θ is set to `nothing`.
@@ -24,21 +24,21 @@ Arguments
 * `MHD_dir_name`: name of the subfolder to save MHD files
 * `MIP_dir_name`: name of the subfolder to save MIP files
 * `n_bin`: number of rounds to bin. e.g. `n_bin=2` results in 4x4 binning
-* `z_range`: number of frames per z-stack, if using a continuous timestream data series
+* `n_z`: number of frames per z-stack for a continuous timestream data series
 """
 function nd2_to_mhd(path_nd2, path_save,
     spacing_lat, spacing_axi, generate_MIP::Bool;
     θ=nothing, x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     y_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1],
-    MHD_dir_name="MHD", MIP_dir_name="MIP", n_bin=nothing, z_range=nothing)
+    MHD_dir_name="MHD", MIP_dir_name="MIP", n_bin=nothing, n_z=nothing)
 
     mhd_paths = []
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
 
-    if !isnothing(z_range)
-        z_size = z_range
-        t_size = t_size ÷ z_range
+    if !isnothing(n_z)
+        z_size = n_z
+        t_size = t_size ÷ n_z
     end
     if !isnothing(n_bin)
         x_size = floor(Int, x_size / (2 ^ n_bin))
@@ -87,12 +87,12 @@ function nd2_to_mhd(path_nd2, path_save,
         for c_ = chs
             for (n_, z_) = enumerate(z_crop)
                 # load
-                if isnothing(z_range)
+                if isnothing(n_z)
                     img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
                         t=t_-1, z=z_-1)))
                 else
                     img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
-                        t=0, z=z_range*(t_-1)+z_-1)))
+                        t=0, z=n_z*(t_-1)+z_-1)))
                 end
                 # binning
                 if !isnothing(n_bin)
@@ -134,7 +134,8 @@ end
     nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi; θ=nothing,
         x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
         y_crop::Union{Nothing, UnitRange{Int64}}=nothing,
-        z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1])
+        z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1],
+        n_bin=nothing, n_z=nothing)
 
 Saves nd2 into HDF5 file after rotating and cropping. Rotation is skipped if
 θ is set to `nothing`. Note: indexing is 1 based. Array axis is in the following
@@ -153,23 +154,23 @@ Arguments
 * `z_crop`: z range to use. Full range if nothing
 * `chs`: ch to use
 * `n_bin`: number of rounds to bin. e.g. `n_bin=2` results in 4x4 binning
-* `z_range`: number of frames per z-stack, if using a continuous timestream data series
+* `n_z`: number of frames per z-stack for a continuous timestream data series
 """
 function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi; θ=nothing,
     x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     y_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1],
-    n_bin=nothing, z_range=nothing)
+    n_bin=nothing, n_z=nothing)
 
     if splitext(path_save)[2] != ".h5"
         error("path_save must end with .h5")
     end
 
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
-    
-    if !isnothing(z_range)
-        z_size = z_range
-        t_size = t_size ÷ z_range
+
+    if !isnothing(n_z)
+        z_size = n_z
+        t_size = t_size ÷ n_z
     end
     if !isnothing(n_bin)
         x_size = floor(Int, x_size / (2 ^ n_bin))
@@ -210,15 +211,15 @@ function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi; θ=nothing,
                 length(chs)), "chunk", (x_size_save, y_size_save, 1, 1, 1))
 
             @showprogress for t_ = 1:t_size
-                for (n_c, c_) = enumerate(chs)
-                    for (n_z, z_) = enumerate(z_crop)
+                for (i_c, c_) = enumerate(chs)
+                    for (i_z, z_) = enumerate(z_crop)
                         # load
-                        if isnothing(z_range)
-                            img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
-                                t=t_-1, z=z_-1)))
+                        if isnothing(n_z)
+                            img_ = Float64.(transpose(images.get_frame_2D(
+                                c=c_-1, t=t_-1, z=z_-1)))
                         else
-                            img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
-                                t=0, z=z_range*(t_-1)+z_-1)))
+                            img_ = Float64.(transpose(images.get_frame_2D(
+                                c=c_-1, t=0, z=n_z*(t_-1)+z_-1)))
                         end
 
                         # binning
@@ -228,10 +229,10 @@ function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi; θ=nothing,
 
                         # rotate, crop, convert to UInt16, and save
                         if isnothing(θ)
-                            dset[:, :, n_z, t_, n_c] = round.(UInt16,
+                            dset[:, :, i_z, t_, i_c] = round.(UInt16,
                             img_[x_crop, y_crop])
                         else
-                            dset[:, :, n_z, t_, n_c] = round.(UInt16,
+                            dset[:, :, i_z, t_, i_c] = round.(UInt16,
                                 rotate_img(img_, θ)[x_crop, y_crop])
                         end
                     end # for
@@ -262,10 +263,10 @@ Arguments
 * `chs`: ch to use
 * `dir_save`: directory to save MIP images and movies
 * `n_bin`: number of rounds to bin. e.g. `n_bin=2` results in 4x4 binning
-* `z_range`: number of frames per z-stack, if using a continuous timestream data series
+* `n_z`: number of frames per z-stack, if using a continuous timestream data series
 """
 function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=:drop_first,
-    dir_save=nothing, n_bin=nothing, z_range=nothing)
+    dir_save=nothing, n_bin=nothing, n_z=nothing)
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
 
     if !isnothing(n_bin)
@@ -285,9 +286,9 @@ function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=:drop_first,
     create_dir(dir_movie)
 
     z_size_save = Int(0)
-    if !isnothing(z_range)
-        z_size = z_range
-        t_size = t_size ÷ z_range
+    if !isnothing(n_z)
+        z_size = n_z
+        t_size = t_size ÷ n_z
     end
     if z_crop == nothing
         z_size_save = z_size
@@ -306,21 +307,21 @@ function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=:drop_first,
     # png generation
     @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
         @showprogress for t_ = 1:t_size
-            for (n_c, c_) = enumerate(chs)
-                for (n_z, z_) = enumerate(z_crop)
+            for (i_c, c_) = enumerate(chs)
+                for (i_z, z_) = enumerate(z_crop)
                     # load
-		    if isnothing(z_range)
+		    if isnothing(n_z)
                         img_ = Float32.(transpose(images.get_frame_2D(c=c_-1,
                             t=t_-1, z=z_-1)))
                     else
                         img_ = Float32.(transpose(images.get_frame_2D(c=c_-1,
-                            t=0, z=z_range*(t_-1)+z_-1)))
+                            t=0, z=n_z*(t_-1)+z_-1)))
                     end
                     if !isnothing(n_bin)
                         img_ = bin_img(img_, n_bin)
                     end
 
-                    vol_[:,:,n_z] = img_
+                    vol_[:,:,i_z] = img_
                 end #z
 
                 img_MIP_ = maxprj(vol_, dims=prjdim)
