@@ -29,12 +29,12 @@ function nd2read(path_nd2; ch=1, t=1, n_bin=nothing, n_z=nothing)
     @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
         for (n_, t_) = enumerate(t)
             for z_ = 1:z_size
-                if isnothing(z_range)
+                if isnothing(n_z)
                     img_ = transpose(images.get_frame_2D(c=ch-1,
                         t=t_-1, z=z_-1))
                 else
                     img_ = transpose(images.get_frame_2D(c=ch-1,
-                        t=0, z=z_range*(t_-1)+z_-1))
+                        t=0, z=n_z*(t_-1)+z_-1))
                 end
                 stack_[:,:,z_,n_] = !isnothing(n_bin) ? round.(UInt16,
                     bin_img(img_, n_bin)) : img_
@@ -98,9 +98,9 @@ function nd2preview(path_nd2; ch=1, return_data=false, z_crop=nothing,
         x_size = floor(Int, x_size / (2 ^ n_bin))
         y_size = floor(Int, y_size / (2 ^ n_bin))
     end
-    if !isnothing(z_range)
-        z_size = z_range
-        t_size = t_size ÷ z_range
+    if !isnothing(n_z)
+        z_size = n_z
+        t_size = t_size ÷ n_z
     end
     # first, middle, last time point
     t_list = t_size > 3 ? [1, round(Int, t_size / 2), t_size] : [1]
