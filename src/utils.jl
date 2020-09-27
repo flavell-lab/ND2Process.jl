@@ -1,13 +1,3 @@
-function create_dir(dirpath::String)
-    if !isdir(dirpath)
-        mkdir(dirpath)
-    end
-end
-
-function maxprj(array; dims)
-    dropdims(maximum(array, dims=dims), dims=dims)
-end
-
 function encode_movie(input, output; fps=10)
     input = `-i $input`
     options = `-hide_banner -loglevel panic -y -framerate $fps`
