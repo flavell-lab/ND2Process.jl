@@ -1,3 +1,7 @@
+function get_basename(bname, c, t)
+    bname * "_c" * lpad(string(c), 2, "0") * "_t" * lpad(string(t), 4, "0")
+end
+
 """
     nd2_to_mhd(path_nd2, path_save,
         spacing_lat, spacing_axi, generate_MIP::Bool;
@@ -264,87 +268,83 @@ Arguments
 * `dir_save`: directory to save MIP images and movies
 * `n_bin`: number of rounds to bin. e.g. `n_bin=2` results in 4x4 binning
 * `n_z`: number of frames per z-stack, if using a continuous timestream data series
+* `vmax`: vmax for img export
 """
-function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=:drop_first,
-    dir_save=nothing, n_bin=nothing, n_z=nothing)
+function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=nothing,
+    dir_save=nothing, n_bin=nothing, n_z=nothing, vmax=1000)
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
-
+    # binning
+    if !isnothing(n_z)
+        z_size = n_z
+        t_size = t_size ÷ n_z
+    end
     if !isnothing(n_bin)
         x_size = floor(Int, x_size / (2 ^ n_bin))
         y_size = floor(Int, y_size / (2 ^ n_bin))
     end
 
+    # save dir
     if isnothing(dir_save)
         dir_save = dirname(path_nd2)
     end
-
     dir_MIP = joinpath(dir_save, "MIP_original")
     dir_movie = joinpath(dir_save, "movie_original")
-    f_basename = splitext(basename(path_nd2))[1]
-
+    bname = splitext(basename(path_nd2))[1]
     create_dir(dir_MIP)
     create_dir(dir_movie)
 
-    z_size_save = Int(0)
-    if !isnothing(n_z)
-        z_size = n_z
-        t_size = t_size ÷ n_z
-    end
+    # size determination
     if z_crop == nothing
         z_size_save = z_size
         z_crop = 1:z_size
-    elseif z_crop == :drop_first
-        z_size_save = z_size - 1
-        z_crop = 2:z_size
     else
         z_size_save = length(z_crop)
     end
 
-    vol_ = zeros(Float32, x_size, y_size, z_size_save)
-    img_MIP_ = zeros(Float32, x_size, y_size)
-    n_leading_zero = 4
-
-    # png generation
+    vol = zeros(Float64, x_size, y_size, z_size)
+    img = zeros(Float64, x_size, y_size)
+    
     @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
-        @showprogress for t_ = 1:t_size
-            for (i_c, c_) = enumerate(chs)
-                for (i_z, z_) = enumerate(z_crop)
+        @showprogress for t = 1:t_size
+            for c = chs
+                for (n, z) = enumerate(z_crop)
                     # load
-		    if isnothing(n_z)
-                        img_ = Float32.(transpose(images.get_frame_2D(c=c_-1,
-                            t=t_-1, z=z_-1)))
+                    if isnothing(n_z)
+                        img .= Float64.(transpose(images.get_frame_2D(c=c-1,
+                            t=t-1, z=z-1)))
                     else
-                        img_ = Float32.(transpose(images.get_frame_2D(c=c_-1,
-                            t=0, z=n_z*(t_-1)+z_-1)))
+                        img .= Float64.(transpose(images.get_frame_2D(c=c-1,
+                            t=0, z=n_z*(t-1)+z-1)))
                     end
+                    # binning
                     if !isnothing(n_bin)
-                        img_ = bin_img(img_, n_bin)
+                        img .= bin_img(img, n_bin)
                     end
-
-                    vol_[:,:,i_z] = img_
-                end #z
-
-                img_MIP_ = maxprj(vol_, dims=prjdim)
-
-                name_png_ = f_basename * "_c" * lpad(string(c_), 2, "0") *
-                    "_t" * lpad(string(t_), n_leading_zero, "0") * ".png"
-                path_png_ = joinpath(dir_MIP, name_png_)
-                imsave(path_png_, img_MIP_, cmap="gray", vmax=1000)
-            end # c
+                    vol[:,:,n] .= img
+                    
+                    img_MIP = Gray{N0f8}.(clamp01.(maxprj(vol, dims=prjdim) ./ vmax))
+                    
+                    # write MIP
+                    path_png = joinpath(dir_MIP, get_basename(bname, c, t) * ".png")
+                    save(path_png, img_MIP)
+                end # z
+            end # ch
         end # t
-    end # pywith
-
-    # movie generation
-    try
-        for c_ = chs
-            for fps_ = [30,60,120,240]
-                encode_movie(joinpath(dir_MIP, f_basename * "_c" *
-                    lpad(string(c_), 2, "0") * "_t%0$(n_leading_zero)d.png"),
-                    joinpath(dir_movie, f_basename *
-                        "_original_$(fps_)fps.mp4"), fps=fps_);
-            end
-        end
-    catch
-        error("Cannot generate movie for $path_nd2")
-    end
+    end # py nd2
+    
+    encoder_options = (crf="10", preset="veryslow")
+    target_pix_fmt = VideoIO.AV_PIX_FMT_YUV420P
+    for c = chs, fps_ = [30,60,120]
+        path_vid =  joinpath(dir_movie, bname * "_ch" * lpad(string(c), 2, "0") *
+            "_original_$(fps_)fps.mp4")
+        path_png = joinpath(dir_MIP, get_basename(bname, c, 1) * ".png")
+        open_video_out(path_vid, load(path_png), framerate=fps_,
+            encoder_options=encoder_options, codec_name="libx264",
+            target_pix_fmt=target_pix_fmt) do vidf
+            for t = 2:t_size
+                path_png = joinpath(dir_MIP, get_basename(bname, c, t) * ".png")
+                write(vidf, load(path_png))
+            end # t
+        end # vid
+    end # c
 end
