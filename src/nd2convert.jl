@@ -50,7 +50,7 @@ function nd2_to_mhd(path_nd2, path_save,
     end
 
     # directories
-    f_basename = splitext(basename(path_nd2))[1]
+    bname = splitext(basename(path_nd2))[1]
 
     path_dir_MHD = joinpath(path_save, MHD_dir_name)
     path_dir_MIP = joinpath(path_save, MIP_dir_name)
@@ -83,36 +83,36 @@ function nd2_to_mhd(path_nd2, path_save,
     end
 
 
-    img_ = zeros(UInt16, x_size, y_size)
-    vol_ = zeros(UInt16, x_size_save, y_size_save, z_size_save)
+    img = zeros(Float64, x_size, y_size)
+    vol = zeros(UInt16, x_size_save, y_size_save, z_size_save)
 
     @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
-        @showprogress for t_ = 1:t_size
-        for c_ = chs
-            for (n_, z_) = enumerate(z_crop)
+        @showprogress for t = 1:t_size
+        for c = chs
+            for (n, z) = enumerate(z_crop)
                 # load
                 if isnothing(n_z)
-                    img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
-                        t=t_-1, z=z_-1)))
+                    img .= Float64.(transpose(images.get_frame_2D(c=c-1,
+                        t=t-1, z=z-1)))
                 else
-                    img_ = Float64.(transpose(images.get_frame_2D(c=c_-1,
-                        t=0, z=n_z*(t_-1)+z_-1)))
+                    img .= Float64.(transpose(images.get_frame_2D(c=c-1,
+                        t=0, z=n_z*(t-1)+z-1)))
                 end
                 # binning
                 if !isnothing(n_bin)
-                    img_ = bin_img(img_, n_bin)
+                    img .= bin_img(img, n_bin)
                 end
 
                 # rotate, crop, convert to UInt16
                 if isnothing(θ)
-                    vol_[:,:,n_] = round.(UInt16, img_[x_crop, y_crop])
+                    vol[:,:,n] = round.(UInt16, img[x_crop, y_crop])
                 else
-                    vol_[:,:,n_] = round.(UInt16,
-                        rotate_img(img_, θ)[x_crop, y_crop])
+                    vol[:,:,n] = round.(UInt16,
+                        rotate_img(img, θ)[x_crop, y_crop])
                 end
             end
 
-            save_basename = f_basename * "_t$(lpad(t_, 4, "0"))_ch$(c_)"
+            save_basename = bname * "_t$(lpad(t, 4, "0"))_ch$(c)"
             path_file_MHD = joinpath(path_dir_MHD, save_basename * ".mhd")
             path_file_raw = joinpath(path_dir_MHD, save_basename * ".raw")
 
@@ -205,7 +205,7 @@ function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi; θ=nothing,
     end
 
 
-    img_ = zeros(UInt16, x_size, y_size)
+    im_ = zeros(UInt16, x_size, y_size)
 
     @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
 
@@ -214,29 +214,29 @@ function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi; θ=nothing,
             dataspace(x_size_save, y_size_save, z_size_save, t_size,
                 length(chs)), "chunk", (x_size_save, y_size_save, 1, 1, 1))
 
-            @showprogress for t_ = 1:t_size
-                for (i_c, c_) = enumerate(chs)
-                    for (i_z, z_) = enumerate(z_crop)
+            @showprogress for t = 1:t_size
+                for (i_c, c) = enumerate(chs)
+                    for (i_z, z) = enumerate(z_crop)
                         # load
                         if isnothing(n_z)
-                            img_ = Float64.(transpose(images.get_frame_2D(
-                                c=c_-1, t=t_-1, z=z_-1)))
+                            img = Float64.(transpose(images.get_frame_2D(
+                                c=c-1, t=t-1, z=z-1)))
                         else
-                            img_ = Float64.(transpose(images.get_frame_2D(
-                                c=c_-1, t=0, z=n_z*(t_-1)+z_-1)))
+                            img = Float64.(transpose(images.get_frame_2D(
+                                c=c-1, t=0, z=n_z*(t-1)+z-1)))
                         end
 
                         # binning
                         if !isnothing(n_bin)
-                            img_ = bin_img(img_, n_bin)
+                            img = bin_img(img, n_bin)
                         end
 
                         # rotate, crop, convert to UInt16, and save
                         if isnothing(θ)
-                            dset[:, :, i_z, t_, i_c] = round.(UInt16,
-                            img_[x_crop, y_crop])
+                            dset[:, :, i_z, t, i_c] = round.(UInt16,
+                            img[x_crop, y_crop])
                         else
-                            dset[:, :, i_z, t_, i_c] = round.(UInt16,
+                            dset[:, :, i_z, t, i_c] = round.(UInt16,
                                 rotate_img(img_, θ)[x_crop, y_crop])
                         end
                     end # for
