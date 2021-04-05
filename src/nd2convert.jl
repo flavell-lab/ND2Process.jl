@@ -1,5 +1,5 @@
-function get_basename(bname, c, t)
-    bname * "_c" * lpad(string(c), 2, "0") * "_t" * lpad(string(t), 4, "0")
+function get_basename(bname, t, c)
+    bname * "_t" * lpad(string(t), 4, "0") * "_ch" * string(c)
 end
 
 """
@@ -112,7 +112,7 @@ function nd2_to_mhd(path_nd2, path_save,
                 end
             end
 
-            save_basename = bname * "_t$(lpad(t, 4, "0"))_ch$(c)"
+            save_basename = get_basename(bname, t, c)
             path_file_MHD = joinpath(path_dir_MHD, save_basename * ".mhd")
             path_file_raw = joinpath(path_dir_MHD, save_basename * ".raw")
 
@@ -325,7 +325,7 @@ function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=nothing,
                     img_MIP = Gray{N0f8}.(clamp01.(maxprj(vol, dims=prjdim) ./ vmax))
                     
                     # write MIP
-                    path_png = joinpath(dir_MIP, get_basename(bname, c, t) * ".png")
+                    path_png = joinpath(dir_MIP, get_basename(bname, t, c) * ".png")
                     save(path_png, img_MIP)
                 end # z
             end # ch
@@ -337,12 +337,12 @@ function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=nothing,
     for c = chs, fps_ = [30,60,120]
         path_vid =  joinpath(dir_movie, bname * "_ch" * lpad(string(c), 2, "0") *
             "_original_$(fps_)fps.mp4")
-        path_png = joinpath(dir_MIP, get_basename(bname, c, 1) * ".png")
+        path_png = joinpath(dir_MIP, get_basename(bname, t, c) * ".png")
         open_video_out(path_vid, load(path_png), framerate=fps_,
             encoder_options=encoder_options, codec_name="libx264",
             target_pix_fmt=target_pix_fmt) do vidf
             for t = 2:t_size
-                path_png = joinpath(dir_MIP, get_basename(bname, c, t) * ".png")
+                path_png = joinpath(dir_MIP, get_basename(bname, t, c) * ".png")
                 write(vidf, load(path_png))
             end # t
         end # vid
