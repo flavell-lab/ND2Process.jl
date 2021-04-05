@@ -117,7 +117,7 @@ function nd2_to_mhd(path_nd2, path_save,
             path_file_raw = joinpath(path_dir_MHD, save_basename * ".raw")
 
             # save MHD
-            write_raw(path_file_raw, vol_)
+            write_raw(path_file_raw, vol)
             write_MHD_spec(path_file_MHD, spacing_lat, spacing_axi,
                     x_size_save, y_size_save, z_size_save,
                         save_basename * ".raw")
@@ -125,7 +125,7 @@ function nd2_to_mhd(path_nd2, path_save,
             # save MIP
             if generate_MIP
                 path_file_MIP = joinpath(path_dir_MIP, save_basename * ".png")
-                imsave(path_file_MIP, dropdims(maximum(vol_, dims=3), dims=3),
+                imsave(path_file_MIP, dropdims(maximum(vol, dims=3), dims=3),
                     cmap="gray")
             end
         end
