@@ -337,7 +337,7 @@ function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=nothing,
     for c = chs, fps_ = [30,60,120]
         path_vid =  joinpath(dir_movie, bname * "_ch" * lpad(string(c), 2, "0") *
             "_original_$(fps_)fps.mp4")
-        path_png = joinpath(dir_MIP, get_basename(bname, t, c) * ".png")
+        path_png = joinpath(dir_MIP, get_basename(bname, 1, c) * ".png")
         open_video_out(path_vid, load(path_png), framerate=fps_,
             encoder_options=encoder_options, codec_name="libx264",
             target_pix_fmt=target_pix_fmt) do vidf
