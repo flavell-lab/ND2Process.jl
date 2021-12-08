@@ -29,13 +29,14 @@ Arguments
 * `MIP_dir_name`: name of the subfolder to save MIP files
 * `n_bin`: number of rounds to bin. e.g. `n_bin=2` results in 4x4 binning
 * `n_z`: number of frames per z-stack for a continuous timestream data series
+* `label_offset::Int`: offset to save images
 """
 function nd2_to_mhd(path_nd2, path_save,
     spacing_lat, spacing_axi, generate_MIP::Bool;
     θ=nothing, x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     y_crop::Union{Nothing, UnitRange{Int64}}=nothing,
     z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1],
-    MHD_dir_name="MHD", MIP_dir_name="MIP", n_bin=nothing, n_z=nothing)
+    MHD_dir_name="MHD", MIP_dir_name="MIP", n_bin=nothing, n_z=nothing, label_offset::Int=0)
 
     mhd_paths = []
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
@@ -112,7 +113,7 @@ function nd2_to_mhd(path_nd2, path_save,
                 end
             end
 
-            save_basename = get_basename(bname, t, c)
+            save_basename = get_basename(bname, t + label_offset, c)
             path_file_MHD = joinpath(path_dir_MHD, save_basename * ".mhd")
             path_file_raw = joinpath(path_dir_MHD, save_basename * ".raw")
 
