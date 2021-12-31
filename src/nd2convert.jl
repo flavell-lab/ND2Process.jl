@@ -3,6 +3,134 @@ function get_basename(bname, t, c)
 end
 
 """
+    nd2_to_nrrd(path_nd2, path_save,
+        spacing_lat, spacing_axi, generate_MIP::Bool;
+        θ=nothing, x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
+        y_crop::Union{Nothing, UnitRange{Int64}}=nothing,
+        z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1],
+        NRRD_dir_name="NRRD", MIP_dir_name="MIP", n_bin=nothing, n_z=nothing, label_offset::Int=0)
+
+Saves nd2 into NRRD files after rotating and cropping. Rotation is skipped if
+θ is set to `nothing`.
+
+Arguments
+---------
+* `path_nd2`: path of .nd2 file to use
+* `path_save`: path of .h5 file to save
+* `spacing_lat`: lateral spacing (for logging)
+* `spacing_axi`: axial spacing (for logging)
+* `generate_MIP`: if true, save MIP in as preview
+* `θ`: yaw angle (lateral rotation, radian). nothing if no rotation
+* `x_crop`: x range to use. Full range if nothing
+* `y_crop`: y range to use. Full range if nothing
+* `z_crop`: z range to use. Full range if nothing
+* `chs`: ch to use
+* `NRRD_dir_name`: name of the subfolder to save NRRD files
+* `MIP_dir_name`: name of the subfolder to save MIP files
+* `n_bin`: number of rounds to bin. e.g. `n_bin=2` results in 4x4 binning
+* `n_z`: number of frames per z-stack for a continuous timestream data series
+* `label_offset::Int`: offset to save images
+"""
+function nd2_to_nrrd(path_nd2, path_save,
+    spacing_lat, spacing_axi, generate_MIP::Bool;
+    θ=nothing, x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
+    y_crop::Union{Nothing, UnitRange{Int64}}=nothing,
+    z_crop::Union{Nothing, UnitRange{Int64}}=nothing, chs::Array{Int}=[1],
+    NRRD_dir_name="NRRD", MIP_dir_name="MIP", n_bin=nothing, n_z=nothing, label_offset::Int=0)
+
+    mhd_paths = []
+    x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
+
+    if !isnothing(n_z)
+        z_size = n_z
+        t_size = t_size ÷ n_z
+    end
+    if !isnothing(n_bin)
+        x_size = floor(Int, x_size / (2 ^ n_bin))
+        y_size = floor(Int, y_size / (2 ^ n_bin))
+    end
+
+    # directories
+    bname = splitext(basename(path_nd2))[1]
+
+    path_dir_NRRD = joinpath(path_save, NRRD_dir_name)
+    path_dir_MIP = joinpath(path_save, MIP_dir_name)
+
+    create_dir(path_save)
+    create_dir(path_dir_NRRD)
+    generate_MIP && create_dir(path_dir_MIP)
+
+    x_size_save = Int(0)
+    y_size_save = Int(0)
+    z_size_save = Int(0)
+
+    if z_crop == nothing
+        z_size_save = z_size
+        z_crop = 1:z_size
+    else
+        z_size_save = length(z_crop)
+    end
+    if x_crop == nothing
+        x_size_save = x_size
+        x_crop = 1:x_size
+    else
+        x_size_save = length(x_crop)
+    end
+    if y_crop == nothing
+        y_size_save = y_size
+        y_crop = 1:y_size
+    else
+        y_size_save = length(y_crop)
+    end
+
+
+    img = zeros(Float64, x_size, y_size)
+    vol = zeros(UInt16, x_size_save, y_size_save, z_size_save)
+
+    @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
+        @showprogress for t = 1:t_size
+            for c = chs
+                for (n, z) = enumerate(z_crop)
+                    # load
+                    if isnothing(n_z)
+                        img .= Float64.(transpose(images.get_frame_2D(c=c-1,
+                            t=t-1, z=z-1)))
+                    else
+                        img .= Float64.(transpose(images.get_frame_2D(c=c-1,
+                            t=0, z=n_z*(t-1)+z-1)))
+                    end
+                    # binning
+                    if !isnothing(n_bin)
+                        img .= bin_img(img, n_bin)
+                    end
+
+                    # rotate, crop, convert to UInt16
+                    if isnothing(θ)
+                        vol[:,:,n] = round.(UInt16, img[x_crop, y_crop])
+                    else
+                        vol[:,:,n] = round.(UInt16,
+                            rotate_img(img, θ)[x_crop, y_crop])
+                    end
+                end
+
+                save_basename = get_basename(bname, t + label_offset, c)
+                path_file_nrrd = joinpath(path_dir_NRRD, save_basename * ".nrrd")
+
+                # save NRRD
+                write_nrrd(path_file_nrrd, vol, (spacing_lat, spacing_lat, spacing_axi))
+
+                # save MIP
+                if generate_MIP
+                    path_file_MIP = joinpath(path_dir_MIP, save_basename * ".png")
+                    imsave(path_file_MIP, dropdims(maximum(vol, dims=3), dims=3),
+                        cmap="gray")
+                end
+            end # for c
+        end # for t
+    end # pywith
+end # function
+
+"""
     nd2_to_mhd(path_nd2, path_save,
         spacing_lat, spacing_axi, generate_MIP::Bool;
         θ=nothing, x_crop::Union{Nothing, UnitRange{Int64}}=nothing,
@@ -89,51 +217,50 @@ function nd2_to_mhd(path_nd2, path_save,
 
     @pywith py_nd2reader.ND2Reader(path_nd2) as images begin
         @showprogress for t = 1:t_size
-        for c = chs
-            for (n, z) = enumerate(z_crop)
-                # load
-                if isnothing(n_z)
-                    img .= Float64.(transpose(images.get_frame_2D(c=c-1,
-                        t=t-1, z=z-1)))
-                else
-                    img .= Float64.(transpose(images.get_frame_2D(c=c-1,
-                        t=0, z=n_z*(t-1)+z-1)))
+            for c = chs
+                for (n, z) = enumerate(z_crop)
+                    # load
+                    if isnothing(n_z)
+                        img .= Float64.(transpose(images.get_frame_2D(c=c-1,
+                            t=t-1, z=z-1)))
+                    else
+                        img .= Float64.(transpose(images.get_frame_2D(c=c-1,
+                            t=0, z=n_z*(t-1)+z-1)))
+                    end
+                    # binning
+                    if !isnothing(n_bin)
+                        img .= bin_img(img, n_bin)
+                    end
+
+                    # rotate, crop, convert to UInt16
+                    if isnothing(θ)
+                        vol[:,:,n] = round.(UInt16, img[x_crop, y_crop])
+                    else
+                        vol[:,:,n] = round.(UInt16,
+                            rotate_img(img, θ)[x_crop, y_crop])
+                    end
                 end
-                # binning
-                if !isnothing(n_bin)
-                    img .= bin_img(img, n_bin)
+
+                save_basename = get_basename(bname, t + label_offset, c)
+                path_file_MHD = joinpath(path_dir_MHD, save_basename * ".mhd")
+                path_file_raw = joinpath(path_dir_MHD, save_basename * ".raw")
+
+                # save MHD
+                write_raw(path_file_raw, vol)
+                write_MHD_spec(path_file_MHD, spacing_lat, spacing_axi,
+                        x_size_save, y_size_save, z_size_save,
+                            save_basename * ".raw")
+
+                # save MIP
+                if generate_MIP
+                    path_file_MIP = joinpath(path_dir_MIP, save_basename * ".png")
+                    imsave(path_file_MIP, dropdims(maximum(vol, dims=3), dims=3),
+                        cmap="gray")
                 end
-
-                # rotate, crop, convert to UInt16
-                if isnothing(θ)
-                    vol[:,:,n] = round.(UInt16, img[x_crop, y_crop])
-                else
-                    vol[:,:,n] = round.(UInt16,
-                        rotate_img(img, θ)[x_crop, y_crop])
-                end
-            end
-
-            save_basename = get_basename(bname, t + label_offset, c)
-            path_file_MHD = joinpath(path_dir_MHD, save_basename * ".mhd")
-            path_file_raw = joinpath(path_dir_MHD, save_basename * ".raw")
-
-            # save MHD
-            write_raw(path_file_raw, vol)
-            write_MHD_spec(path_file_MHD, spacing_lat, spacing_axi,
-                    x_size_save, y_size_save, z_size_save,
-                        save_basename * ".raw")
-
-            # save MIP
-            if generate_MIP
-                path_file_MIP = joinpath(path_dir_MIP, save_basename * ".png")
-                imsave(path_file_MIP, dropdims(maximum(vol, dims=3), dims=3),
-                    cmap="gray")
-            end
-        end
-
-        end
-    end
-end
+            end # for c
+        end # for t
+    end # pywith
+end # function
 
 """
     nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi; θ=nothing,
