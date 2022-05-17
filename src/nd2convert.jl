@@ -397,9 +397,10 @@ Arguments
 * `n_bin`: number of rounds to bin. e.g. `n_bin=2` results in 4x4 binning
 * `n_z`: number of frames per z-stack, if using a continuous timestream data series
 * `vmax`: vmax for img export
+* `list_fps`: list of fps for the videos
 """
 function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=nothing,
-    dir_save=nothing, n_bin=nothing, n_z=nothing, vmax=1000)
+    dir_save=nothing, n_bin=nothing, n_z=nothing, vmax=1000, list_fps=[30,60,120])
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
     # binning
     if !isnothing(n_z)
@@ -462,7 +463,7 @@ function write_nd2_preview(path_nd2; prjdim=3, chs=[1], z_crop=nothing,
     
     encoder_options = (crf="10", preset="veryslow")
     target_pix_fmt = VideoIO.AV_PIX_FMT_YUV420P
-    for c = chs, fps_ = [30,60,120]
+    for c = chs, fps_ = list_fps
         path_vid =  joinpath(dir_movie, bname * "_ch" * lpad(string(c), 2, "0") *
             "_original_$(fps_)fps.mp4")
         path_png = joinpath(dir_MIP, get_basename(bname, 1, c) * ".png")
