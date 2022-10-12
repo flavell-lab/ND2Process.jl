@@ -340,7 +340,7 @@ function nd2_to_h5(path_nd2, path_save, spacing_lat, spacing_axi; θ=nothing,
         h5open(path_save, "w") do f
             dset = create_dataset(f, "data", datatype(UInt16),
             dataspace(x_size_save, y_size_save, z_size_save, t_size,
-                length(chs)), "chunk"=(x_size_save, y_size_save, 1, 1, 1), compress=5)
+                length(chs)), chunk=(x_size_save, y_size_save, 1, 1, 1), compress=5)
 
             @showprogress for t = 1:t_size
                 for (i_c, c) = enumerate(chs)
