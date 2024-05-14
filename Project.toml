@@ -1,7 +1,7 @@
 name = "ND2Process"
 uuid = "6ef1548a-7d8d-11e9-1627-d5addeeb8a7e"
 authors = ["Jungsoo Kim <jungsoo@mit.edu>"]
-version = "0.6.0"
+version = "0.7.1"
 
 [deps]
 CoordinateTransformations = "150eb455-5306-5404-9cee-2592286d6298"
