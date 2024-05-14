@@ -92,7 +92,7 @@ Arguments
 * `n_z`: number of frames per z-stack for a continuous timestream data series
 """
 function nd2preview(path_nd2; ch=1, return_data=false, z_crop=nothing,
-    n_bin=nothing, n_z=nothing)
+    n_bin=nothing, n_z=nothing, dim=3)
     x_size, y_size, z_size, t_size, c_size = nd2dim(path_nd2)
     if !isnothing(n_bin)
         x_size = floor(Int, x_size / (2 ^ n_bin))
@@ -129,7 +129,7 @@ function nd2preview(path_nd2; ch=1, return_data=false, z_crop=nothing,
         end
     end
 
-    stack_MIP = Float64.(maxprj(stack_, dims=3))
+    stack_MIP = Float64.(maxprj(stack_, dims=dim))
 
     for i = 1:length(t_list)
         subplot(1,length(t_list),i)
